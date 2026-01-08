@@ -140,6 +140,11 @@ def process_turn_job(debate_id: str, seq_index: int):
         user_content = f"The debate topic is: {conf.get('topic')}. \n"
         if conf.get('description'):
             user_content += f"Context: {conf.get('description')}\n"
+            
+        # Add Participants Info
+        user_content += "\nParticipants:\n"
+        for p in participants:
+             user_content += f"- {p.get('display_name')} ({p.get('role')})\n"
         
         user_content += f"\nDebate History:\n{history_str}\n"
         user_content += f"Now it is your turn, {speaker['display_name']}. Please provide your argument."

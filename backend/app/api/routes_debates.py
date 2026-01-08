@@ -39,7 +39,7 @@ async def create_debate(
     """
     # 1. Create Debate record
     new_debate = Debate(
-        title=f"Debate: {config.topic[:50]}...",
+        title=f"Debate: {config.topic}",
         config_json=config.model_dump(),
         status="queued"
     )

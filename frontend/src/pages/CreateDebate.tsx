@@ -390,7 +390,7 @@ const CreateDebate = () => {
                                 }}
                             >
                                 <div className="font-semibold text-gray-800 group-hover:text-blue-700">{t.label}</div>
-                                <div className="text-xs text-gray-500 truncate">{t.topic}</div>
+                                <div className="text-xs text-gray-500 whitespace-normal">{t.topic}</div>
                             </button>
                         ))}
                     </div>
