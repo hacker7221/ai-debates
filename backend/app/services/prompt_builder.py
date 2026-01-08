@@ -9,6 +9,7 @@ class PromptBuilder:
         
         # Language Instruction
         base += f"\nIMPORTANT: You must output your response in {language}."
+        base += "\nFORMATTING: Use Markdown formatting (bold, italics, lists) to make your argument clear and readable."
         
         intensity_map = {
             1: "Be extremely polite, calm, and academic.",

@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { ArrowLeft, User, Bot, Clock } from 'lucide-react';
-// import ReactMarkdown from 'react-markdown'; // Optional for later
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Turn {
   seq_index: number;
@@ -176,7 +177,9 @@ const DebateLive = () => {
             <div key={turn.seq_index} className={`flex flex-col ${isMod ? 'items-start' : 'items-end'}`}>
                 <div className={`max-w-[80%] rounded-2xl p-4 ${isMod ? 'bg-gray-100 border border-gray-200' : 'bg-blue-50 border border-blue-100 hover:shadow-md'} transition-shadow`}>
                     <p className="text-xs font-semibold text-gray-500 mb-1">{turn.speaker_name}</p>
-                    <div className="whitespace-pre-wrap">{turn.text}</div>
+                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.text}</ReactMarkdown>
+                    </div>
                 </div>
             </div>
             );
@@ -186,7 +189,11 @@ const DebateLive = () => {
              <div className={`flex flex-col animate-pulse ${isModerator(streamingTurn.speaker) ? 'items-start' : 'items-end'}`}>
                 <div className={`max-w-[80%] rounded-2xl p-4 border ${isModerator(streamingTurn.speaker) ? 'bg-gray-100 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
                      <p className="text-xs font-semibold text-gray-500 mb-1">{streamingTurn.speaker || "Thinking..."}</p>
-                     <div className="whitespace-pre-wrap">{streamingTurn.text}<span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse">|</span></div>
+                     <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingTurn.text}</ReactMarkdown>
+                        {/* Cursor */}
+                        <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse">|</span>
+                     </div>
                 </div>
              </div>
         )}
