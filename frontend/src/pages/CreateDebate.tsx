@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, ChevronDown } from 'lucide-react';
 
 interface Model {
   id: string;
@@ -10,9 +10,173 @@ interface Model {
   context_length: number;
 }
 
+const TOPIC_TEMPLATES = [
+  // --- Tech & Future ---
+  { 
+    label: "AI Safety", 
+    topic: "Is Artificial Intelligence an existential threat to humanity?", 
+    desc: "Discuss the potential risks of AGI, alignment problems, and whether strict regulation is necessary to prevent catastrophic outcomes." 
+  },
+  { 
+    label: "Gene Editing", 
+    topic: "Should we allow genetic engineering of humans?", 
+    desc: "Debate the ethics of CRISPR, 'designer babies', and eliminating genetic diseases vs potential eugenics and inequality." 
+  },
+  { 
+    label: "Space Exploration",
+    topic: "Should we prioritize Mars colonization over Earth problems?",
+    desc: "Debate the resource allocation between space agencies like NASA/SpaceX and solving immediate issues like climate change and poverty."
+  },
+  {
+    label: "Self-Driving Cars",
+    topic: "Who is responsible when an AI car crashes?",
+    desc: "Discuss the 'Trolley Problem' in real life, legal liability, and the ethics of delegating life-or-death decisions to algorithms."
+  },
+  {
+    label: "Climate Engineering",
+    topic: "Should we use geoengineering to cool the planet?",
+    desc: "Analyze the risks of unintended consequences (e.g. weather manipulation) vs the urgency of the climate crisis."
+  },
+  {
+    label: "Transhumanism",
+    topic: "Should we use technology to enhance human capabilities?",
+    desc: "Discuss the morality of cybernetic implants, potential biological caste systems, and the definition of what it means to be human."
+  },
+
+  // --- Society & Culture ---
+  { 
+    label: "Remote Work", 
+    topic: "Is remote work net positive for society?", 
+    desc: "Analyze the impact of remote work on productivity, mental health, urban planning, and corporate culture." 
+  },
+  { 
+    label: "Social Media", 
+    topic: "Has social media done more harm than good?", 
+    desc: "Evaluate the effects of social platforms on political polarization, mental health, community building, and information dissemination." 
+  },
+  {
+    label: "Video Games",
+    topic: "Do video games contribute to real-world violence?",
+    desc: "Discuss psychological studies, catharsis theory, and the impact of interactive media on behavior."
+  },
+  {
+    label: "Cancel Culture",
+    topic: "Is 'Cancel Culture' a form of mob rule or accountability?",
+    desc: "Debate whether social ostracization is a necessary tool for justice or a threat to due process and free speech."
+  },
+  {
+    label: "Screen Time",
+    topic: "Should parents strictly limit screen time for children?",
+    desc: "Discuss digital literacy and educational benefits vs addiction, attention span reduction, and developmental issues."
+  },
+  {
+    label: "Zoos",
+    topic: "Are zoos ethical in the 21st century?",
+    desc: "Debate conservation and education benefits vs the morality of keeping wild animals in captivity."
+  },
+
+  // --- Economics & Politics ---
+  { 
+    label: "Universal Basic Income", 
+    topic: "Should governments implement Universal Basic Income (UBI)?", 
+    desc: "Debate the economic feasibility, social impact, and potential for UBI to address wealth inequality and automation-driven job loss." 
+  },
+  {
+    label: "Cryptocurrencies",
+    topic: "Are cryptocurrencies the future of finance or a bubble?",
+    desc: "Analyze decentralized finance vs traditional banking, environmental impact, stability, and regulatory challenges."
+  },
+  {
+    label: "Cashless Society",
+    topic: "Should we move to a completely cashless society?",
+    desc: "Analyze efficiency and crime reduction vs loss of privacy, government surveillance, and exclusion of the unbanked."
+  },
+  {
+    label: "Globalization",
+    topic: "Has globalization been net positive for the world?",
+    desc: "Debate economic growth and poverty reduction vs cultural homogenization, labor exploitation, and wealth disparity."
+  },
+  {
+    label: "Four-Day Work Week",
+    topic: "Should the 4-day work week become the standard?",
+    desc: "Analyze productivity studies, employee well-being, work-life balance, and economic impact on businesses."
+  },
+  {
+    label: "Automation Tax",
+    topic: "Should governments tax robots?",
+    desc: "Discuss using robot taxes to fund social programs for workers displaced by automation and AI."
+  },
+
+  // --- Law & Ethics ---
+  {
+    label: "Free Speech",
+    topic: "Should there be strict limits on 'Hate Speech'?",
+    desc: "Debate the line between protecting minorities from harm and preserving absolute freedom of expression."
+  },
+  {
+    label: "Death Penalty",
+    topic: "Should the death penalty be abolished worldwide?",
+    desc: "Debate the morality of capital punishment, risk of executing innocents, retribution vs rehabilitation, and deterrence."
+  },
+  {
+    label: "Voting Age",
+    topic: "Should the voting age be lowered to 16?",
+    desc: "Argue about civic maturity of youth vs their long-term stake in the future (climate change, national debt)."
+  },
+  {
+    label: "Animal Testing",
+    topic: "Is animal testing justified for medical progress?",
+    desc: "Debate utilitarian ethics of saving human lives vs the rights of animals to not suffer."
+  },
+  {
+    label: "Data Privacy",
+    topic: "Is privacy dead in the digital age?",
+    desc: "Debate the trade-offs between convenient personalized services/security and mass surveillance capitalism."
+  },
+  {
+    label: "Assisted Suicide",
+    topic: "Should assisted suicide be legal for the terminally ill?",
+    desc: "Discuss the right to die with dignity vs potential for abuse and the sanctity of life."
+  },
+
+  // --- Education & Environment ---
+  {
+    label: "Nuclear Energy",
+    topic: "Is nuclear energy the solution to climate change?",
+    desc: "Discuss safety concerns, waste management, and the reliability of nuclear power compared to renewables."
+  },
+  { 
+    label: "Veganism", 
+    topic: "Is veganism a moral obligation?", 
+    desc: "Discuss environmental impact of the meat industry, animal rights, and global food sustainability." 
+  },
+  {
+    label: "Standardized Testing",
+    topic: "Are standardized tests a fair measure of ability?",
+    desc: "Evaluate if they objectively measure intelligence or just prioritize rote memorization and disadvantage certain groups."
+  },
+  {
+    label: "Homework",
+    topic: "Should schools abolish homework?",
+    desc: "Debate the impact on family time and student stress vs reinforcement of learning concepts and discipline."
+  },
+  {
+    label: "Plastics Ban",
+    topic: "Should single-use plastics be banned globally?",
+    desc: "Analyze the environmental necessity vs economic impact and convenience for consumers and small businesses."
+  },
+  {
+    label: "Private Schools",
+    topic: "Should private schools be abolished?",
+    desc: "Debate whether private education reinforces class inequality or provides necessary competition and choice."
+  }
+];
+
 const CreateDebate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const templatesRef = useRef<HTMLDivElement>(null);
   const [models, setModels] = useState<Model[]>([]);
   
   const [settings, setSettings] = useState({
@@ -20,7 +184,7 @@ const CreateDebate = () => {
     description: '',
     language: 'English',
     num_rounds: 3, 
-    length_preset: 'medium', // short, medium, long
+    length_preset: 'short', // short, medium, long
     moderator_model: '',
     num_participants: 2, // 2-5
   });
@@ -30,6 +194,17 @@ const CreateDebate = () => {
       { name: 'Debater 2', model: '', prompt: 'You are a skilled debater. Argue against the topic.', position: 2 }
   ]);
 
+  // Click outside to close templates
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (templatesRef.current && !templatesRef.current.contains(event.target as Node)) {
+        setShowTemplates(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const fetchModels = async () => {
       try {
@@ -38,11 +213,12 @@ const CreateDebate = () => {
         const modelsList = res.data.data || [];
         setModels(modelsList);
         if (modelsList.length > 0) {
-            setSettings(prev => ({ ...prev, moderator_model: modelsList[0].id }));
+            const defaultModel = modelsList.find((m: any) => m.name.toLowerCase().includes('(free)')) || modelsList[0];
+            setSettings(prev => ({ ...prev, moderator_model: defaultModel.id }));
             
             setParticipants(prev => prev.map(p => ({
                 ...p,
-                model: modelsList[0].id
+                model: defaultModel.id
             })));
         }
       } catch (err) {
@@ -61,10 +237,11 @@ const CreateDebate = () => {
          if (newCount > prev.length) {
              // Add participants
              const added = [];
+             const defaultModelId = models.length > 0 ? (models.find(m => m.name.toLowerCase().includes('(free)')) || models[0]).id : '';
              for (let i = prev.length + 1; i <= newCount; i++) {
                  added.push({
                      name: `Debater ${i}`,
-                     model: models.length > 0 ? models[0].id : '',
+                     model: defaultModelId,
                      prompt: `You are a skilled debater. Provide a unique perspective on the topic (Position ${i}).`,
                      position: i
                  });
@@ -139,14 +316,50 @@ const CreateDebate = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Debate Topic</label>
-              <input
-                type="text"
-                required
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={settings.topic}
-                onChange={e => setSettings({...settings, topic: e.target.value})}
-                placeholder="e.g. Is AI dangerous?"
-              />
+              <div className="relative" ref={templatesRef}>
+                  <div className="flex">
+                    <input
+                        type="text"
+                        required
+                        className="w-full p-2 border border-gray-300 rounded-l focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10"
+                        value={settings.topic}
+                        onChange={e => setSettings({...settings, topic: e.target.value})}
+                        placeholder="e.g. Is AI dangerous?"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowTemplates(!showTemplates)}
+                        className="px-3 border border-l-0 border-gray-300 bg-gray-50 rounded-r hover:bg-gray-100 flex items-center transition-colors"
+                        title="Choose from templates"
+                    >
+                        <ChevronDown className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  
+                  {showTemplates && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div className="p-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Example Topics</div>
+                        {TOPIC_TEMPLATES.map((t, i) => (
+                            <button
+                                key={i}
+                                type="button"
+                                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-100 group"
+                                onClick={() => {
+                                    setSettings(prev => ({ 
+                                        ...prev, 
+                                        topic: t.topic, 
+                                        description: t.desc 
+                                    }));
+                                    setShowTemplates(false);
+                                }}
+                            >
+                                <div className="font-semibold text-gray-800 group-hover:text-blue-700">{t.label}</div>
+                                <div className="text-xs text-gray-500 truncate">{t.topic}</div>
+                            </button>
+                        ))}
+                    </div>
+                  )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
@@ -154,6 +367,7 @@ const CreateDebate = () => {
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                 value={settings.description}
                 onChange={e => setSettings({...settings, description: e.target.value})}
+                placeholder="e.g. Provide context about the setting, specific rules, or the tone of the debate..."
               />
             </div>
 
@@ -176,20 +390,19 @@ const CreateDebate = () => {
             <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Number of Rounds</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                  <select
+                    className="w-full h-10 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                     value={settings.num_rounds}
                     onChange={e => setSettings({...settings, num_rounds: parseInt(e.target.value)})}
-                  />
+                  >
+                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
                 
                  <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Participants</label>
                   <select
-                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-10 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
                     value={settings.num_participants}
                     onChange={e => setSettings({...settings, num_participants: parseInt(e.target.value)})}
                   >
