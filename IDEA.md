@@ -11,6 +11,7 @@
 
 ### Функциональные
 1) Пользователь может:
+   - ввести свой API ключ OpenRouter (BYOK — Bring Your Own Key) для снятия лимитов платформы
    - выбрать тему (prompt)
    - выбрать 2–5 “дебатёров” (каждому: модель + персона/стиль)
    - выбрать модератора (модель)
@@ -84,10 +85,12 @@
    - CRUD дебатов
    - SSE endpoint для стриминга
 3) Worker (Debate Orchestrator):
-   - выполняет дебат по раундам
+   - выполняет дебат шаг за шагом (State Machine / Chained Jobs) для устойчивости к сбоям
    - вызывает модели через OpenRouter
    - публикует события в Redis Pub/Sub
    - сохраняет финальные turns в Postgres
+   - запускает следующую задачу (job) в очередь после завершения текущего хода
+   - (в Docker контейнере)
 4) Postgres:
    - debates, turns, users, quotas, presets
 5) Redis:
@@ -135,11 +138,13 @@
 - medium: 45–60 (opening), 35–50 (rebuttal)
 - long: 70–95 (opening), 55–75 (rebuttal)
 
-### 4.4 Контекстная политика (снижение стоимости)
-- В каждом ходе даём:
-  - последние N реплик (например 6–10)
-  - краткое summary (например 120 слов), обновляемое после каждого хода
-- Не передаём всю историю дебата целиком.
+### 4.4 Контекстная политика (Smart Context)
+Для точного контроля стоимости и качества используем токенизатор (например `tiktoken`), а не просто счетчик реплик.
+- Стратегия:
+  - System prompt (фиксирован)
+  - Rolling Summary (сжатый контекст всего дебата)
+  - Sliding Window последних реплик (до заполнения лимита, например 4000 токенов)
+- Это предотвращает выход за пределы окна LLM и неожиданные траты.
 
 ### 4.5 Ретейки
 Правило:
@@ -162,7 +167,9 @@
 - topic.constraints (правила безопасности)
 - participants:
   - moderator: provider_model_id, display_name
-  - debaters: список {id, display_name, provider_model_id, persona_preset, persona_custom}
+  user_provider_key: (optional, string) — ключ пользователя. 
+  *Важно: хранить в БД только в зашифрованном виде или передавать только в payload задачи (Redis), удаляя после завершения.*
+- - debaters: список {id, display_name, provider_model_id, persona_preset, persona_custom}
 - debate_preset_id
 - length_preset (short/medium/long)
 - intensity (1–10)
@@ -208,8 +215,10 @@
 ### 6.2 Endpoints (минимум)
 
 1) GET /models
-- Возвращает список поддерживаемых моделей (из вашего allowlist)
-- Поля: id, display_name, capabilities (context_length примерно), tags
+- Синхронизируется с OpenRouter API (`https://openrouter.ai/api/v1/models`).
+- Кеширует список на сервере (например, на 1 час).
+- Возвращает отфильтрованный список (allowlist) или все доступные с флагами.
+- Поля: id, display_name, context_length, pricing (prompt/completion), is_free (вычисляемое).
 
 2) GET /presets
 - Возвращает форматы дебатов и лимиты
@@ -223,6 +232,7 @@
 - Возвращает метаданные и список turns (или пагинацию)
 
 5) GET /debates/{debate_id}/stream  (SSE)
+- Использует паттерн Broadcaster (единая подписка на Redis) для масштабирования.
 - Стримит события по дебату:
   - event: debate_started
   - event: round_started
@@ -238,6 +248,8 @@
 --------------------------------------------------------------------
 
 ## 7) SSE события (контракт для фронтенда)
+
+Note: Используйте `Last-Event-ID` header для восстановления связи при обрыве соединения (reconnect), чтобы не потерять сообщения.
 
 События (пример payload-структур):
 
@@ -270,26 +282,34 @@
 
 ## 8) Worker (Debate Orchestrator): детальная логика
 
-### 8.1 Последовательность исполнения
-1) Получить DebateConfig из БД
-2) Записать status=running
-3) Опубликовать debate_started
-4) Для каждого раунда по preset:
-   - опубликовать round_started
-   - определить порядок спикеров
-   - для каждого хода:
-     - собрать контекст (последние N turns + summary)
-     - сформировать prompt
-     - вызвать OpenRouter (streaming):
-       - по мере поступления токенов публиковать turn_delta
-     - получить полный текст
-     - провалидировать (формат/слова/запреты)
-     - если нужно: ретейк
-     - сохранить turn в БД
-     - опубликовать turn_completed
-     - обновить summary
-5) status=completed
-6) опубликовать debate_completed
+### 8.1 Логика исполнения (Chained Jobs для надежности)
+Вместо длинного цикл.
+   - **Key Selection:** Если в config есть `user_provider_key`, инициализировать OpenRouter client с ним. Иначе используем системный ключ.
+   - Укоторый может упасть и потерять состояние, используем цепочку задач:
+
+1) **Job: Start Debate**
+   - Получить config, установить status=running
+   - Опубликовать `debate_started`
+   - Определить первый ход и поставить в очередь **Job: Process Turn**
+
+2) **Job: Process Turn** (принимает debate_id, seq_index)
+   - Если дебат остановлен (stop flag) -> выход
+   - Загрузить историю turns (для контекста)
+   - Если это начало раунда -> опубликовать `round_started`
+   - Собрать контекст (Smart Token Window вместо просто N реплик)
+   - Вызвать OpenRouter (streaming) -> публиковать `turn_delta` в Redis (через Broadcaster)
+   - Валидация + Ретейк (если нужно)
+   - Сохранить Turn в БД
+   - Опубликовать `turn_completed`
+   - Обновить Summary (если настроено)
+   - Определить, кто следующий?
+     - Ещё есть ходы? -> Enqueue **Job: Process Turn** (next seq_index)
+     - Конец? -> Enqueue **Job: Finish Debate**
+
+3) **Job: Finish Debate**
+   - status=completed
+   - Подсчитать итоги
+   - Опубликовать `debate_completed`
 
 ### 8.2 Связка Worker -> SSE
 Worker публикует события в Redis Pub/Sub канал:
@@ -312,8 +332,13 @@ API SSE endpoint:
 
 ## 9) Интеграция с OpenRouter (концептуально)
 
-Стратегия:
-- Вы храните у себя allowlist моделей (то, что показываете пользователю)
+### 9.1 Динамический каталог моделей
+Используйте endpoint `https://openrouter.ai/api/v1/models` для получения актуального списка моделей и их цен.
+- **Pricing:** API возвращает поля `pricing.prompt` и `pricing.completion`. Используйте их для точного расчета `cost_estimate` в конце дебата.
+- **Free Models:** Фильтруйте модели, где `pricing.prompt` и `pricing.completion` равны "0" (или почти 0). Это позволит пользователям запускать дебаты бесплатно.
+
+### 9.2 Стратегия вызова
+- Вы храните у себя allowlist моделей (или используете все доступные, фильтруя по тегам)
 - На каждый вызов модели вы отправляете:
   - system prompt (роль: moderator / debater)
   - user prompt (текущий раунд, лимит, контекст)
@@ -329,9 +354,11 @@ API SSE endpoint:
   - ограничивать число участников
 
 --------------------------------------------------------------------
+*Для пользователей с собственным ключом (BYOK) лимиты могут быть расширены.*
 
-## 10) Безопасность, квоты и контроль затрат
-
+- max_debaters: 5
+- max_turns_total: 60 (для Free), 100+ (для BYOK)
+- max_tokens_per_turn: 250–600 (Free), до лимита модели (BYOK
 ### 10.1 Ограничения (обязательные для MVP)
 - max_debaters: 5
 - max_turns_total: например 60 (включая модератора)
@@ -409,6 +436,13 @@ API SSE endpoint:
 - created_at, started_at, ended_at
 - totals_json (tokens, cost, turns)
 
+Таблица debate_participants (для аналитики):
+- debate_id
+- user_or_session_id
+- model_id
+- role (moderator/debater)
+- persona_name
+
 Таблица turns:
 - id (uuid)
 - debate_id
@@ -479,7 +513,9 @@ monorepo/
 ## 14) План реализации по шагам (чётко)
 
 Шаг 1: Skeleton
-- Создать FastAPI проект, подключить Postgres (SQLAlchemy) и Alembic
+- Создать Fastсервис синхронизации с OpenRouter API (`GET /models`).
+- Добавить логику определения бесплатных моделей (price=0).
+- Реализовать /models с кешированием и выдачей цен.ить Postgres (SQLAlchemy) и Alembic
 - Поднять Redis
 - Создать базовые таблицы debates/turns/sessions
 
@@ -541,8 +577,23 @@ Intensity (1–10) влияет на:
 - выбор лексики: более короткие фразы и больше контраргументов при высокой интенсивности
 
 Важное правило: несмотря на бурность, всегда запрещены:
-- оскорбления
-- ненависть/дискриминация
+- оскорКонтейнеризация и Деплой
+
+Требуется полная Docker-поддержка для локальной разработки и продакшена.
+
+### 16.1 Docker Compose структура
+Сервисы:
+1) **postgres** (DB)
+2) **redis** (Queue + PubSub)
+3) **backend-api**: образ Python/FastAPI (Dockerfile.backend)
+4) **worker**: тот же образ Python, но запускает воркер (command: rq worker)
+5) **frontend**: образ Node.js для сборки и nginx для раздачи статики (Dockerfile.frontend)
+
+### 16.2 Environment
+- Использование `.env` для секретов (OPENROUTER_KEY, DB_URL).
+- В продакшене разделяем образы на build-stage и run-stage (multistage builds) для минимизации размера.
+
+### 16.3 Legacy config (MVP)- ненависть/дискриминация
 - призывы к насилию
 - раскрытие персональных данных
 
