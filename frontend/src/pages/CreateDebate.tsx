@@ -15,17 +15,20 @@ const CreateDebate = () => {
   const [loading, setLoading] = useState(false);
   const [models, setModels] = useState<Model[]>([]);
   
-  const [formData, setFormData] = useState({
+  const [settings, setSettings] = useState({
     topic: '',
     description: '',
-    num_rounds: 3,
-    participant1_name: 'Debater 1',
-    participant1_model: '',
-    participant1_prompt: 'You are a skilled debater. Argue in favor of the topic.',
-    participant2_name: 'Debater 2',
-    participant2_model: '',
-    participant2_prompt: 'You are a skilled debater. Argue against the topic.',
+    language: 'English',
+    num_rounds: 3, 
+    length_preset: 'medium', // short, medium, long
+    moderator_model: '',
+    num_participants: 2, // 2-5
   });
+
+  const [participants, setParticipants] = useState([
+      { name: 'Debater 1', model: '', prompt: 'You are a skilled debater. Argue in favor of the topic.', position: 1 },
+      { name: 'Debater 2', model: '', prompt: 'You are a skilled debater. Argue against the topic.', position: 2 }
+  ]);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -35,11 +38,12 @@ const CreateDebate = () => {
         const modelsList = res.data.data || [];
         setModels(modelsList);
         if (modelsList.length > 0) {
-          setFormData(prev => ({
-            ...prev,
-            participant1_model: modelsList[0].id,
-            participant2_model: modelsList[0].id
-          }));
+            setSettings(prev => ({ ...prev, moderator_model: modelsList[0].id }));
+            
+            setParticipants(prev => prev.map(p => ({
+                ...p,
+                model: modelsList[0].id
+            })));
         }
       } catch (err) {
         console.error("Failed to fetch models", err);
@@ -48,46 +52,70 @@ const CreateDebate = () => {
     fetchModels();
   }, []);
 
+  // Update participant count
+  useEffect(() => {
+     setParticipants(prev => {
+         const newCount = settings.num_participants;
+         if (newCount === prev.length) return prev;
+         
+         if (newCount > prev.length) {
+             // Add participants
+             const added = [];
+             for (let i = prev.length + 1; i <= newCount; i++) {
+                 added.push({
+                     name: `Debater ${i}`,
+                     model: models.length > 0 ? models[0].id : '',
+                     prompt: `You are a skilled debater. Provide a unique perspective on the topic (Position ${i}).`,
+                     position: i
+                 });
+             }
+             return [...prev, ...added];
+         } else {
+             // Remove participants
+             return prev.slice(0, newCount);
+         }
+     });
+  }, [settings.num_participants, models]);
+
+  const updateParticipant = (index: number, field: string, value: string) => {
+      const newP = [...participants];
+      newP[index] = { ...newP[index], [field]: value };
+      setParticipants(newP);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Pick a default model for moderator if not available
-      const defaultModModel = formData.participant1_model; // reuse p1 model
+      const defaultModModel = settings.moderator_model || (models.length > 0 ? models[0].id : '');
 
-      // Construct payload matching Backend DebateConfig schema
+      // Construct payload
       const payload = {
-        topic: formData.topic,
-        description: formData.description,
-        num_rounds: formData.num_rounds,
+        topic: settings.topic,
+        description: settings.description,
+        language: settings.language,
+        num_rounds: settings.num_rounds,
+        length_preset: settings.length_preset,
         debate_preset_id: "custom",
         participants: [
-            // Implicit Moderator
+            // Moderator
             {
                 role: "moderator",
                 model_id: defaultModModel,
                 display_name: "Moderator",
                 persona_custom: "You are an impartial debate moderator. Briefly introduce the next speaker and summarize the current state of the debate."
             },
-            // P1
-            {
+            // Dynamic Debaters
+            ...participants.map(p => ({
                 role: "debater",
-                model_id: formData.participant1_model,
-                display_name: formData.participant1_name,
-                persona_custom: formData.participant1_prompt
-            },
-            // P2
-            {
-                role: "debater",
-                model_id: formData.participant2_model,
-                display_name: formData.participant2_name,
-                persona_custom: formData.participant2_prompt
-            }
+                model_id: p.model,
+                display_name: p.name,
+                persona_custom: p.prompt
+            }))
         ]
       };
 
       const res = await api.post('/debates/', payload);
-      // The backend returns { debate_id: "...", ... }
       navigate(`/debate/${res.data.debate_id}`);
     } catch (err) {
       console.error("Failed to create debate", err);
@@ -115,8 +143,8 @@ const CreateDebate = () => {
                 type="text"
                 required
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.topic}
-                onChange={e => setFormData({...formData, topic: e.target.value})}
+                value={settings.topic}
+                onChange={e => setSettings({...settings, topic: e.target.value})}
                 placeholder="e.g. Is AI dangerous?"
               />
             </div>
@@ -124,100 +152,122 @@ const CreateDebate = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
               <textarea
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                value={formData.description}
-                onChange={e => setFormData({...formData, description: e.target.value})}
+                value={settings.description}
+                onChange={e => setSettings({...settings, description: e.target.value})}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Number of Rounds</label>
-              <input
-                type="number"
-                min={1}
-                max={10}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+              <select
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                value={formData.num_rounds}
-                onChange={e => setFormData({...formData, num_rounds: parseInt(e.target.value)})}
-              />
+                value={settings.language}
+                onChange={e => setSettings({...settings, language: e.target.value})}
+              >
+                <option value="English">English</option>
+                <option value="Russian">Russian</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Chinese">Chinese</option>
+              </select>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Number of Rounds</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    value={settings.num_rounds}
+                    onChange={e => setSettings({...settings, num_rounds: parseInt(e.target.value)})}
+                  />
+                </div>
+                
+                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Participants</label>
+                  <select
+                    className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    value={settings.num_participants}
+                    onChange={e => setSettings({...settings, num_participants: parseInt(e.target.value)})}
+                  >
+                    {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+            </div>
+            
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Response Length</label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                value={settings.length_preset}
+                onChange={e => setSettings({...settings, length_preset: e.target.value})}
+              >
+                <option value="short">Short (~100 words)</option>
+                <option value="medium">Medium (~250 words)</option>
+                <option value="long">Long (~500 words)</option>
+              </select>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 mt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Model</label>
+                <select
+                  className="w-full p-2 border border-gray-300 rounded"
+                  value={settings.moderator_model}
+                  onChange={e => setSettings({...settings, moderator_model: e.target.value})}
+                >
+                  {models.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+            </div>
+
           </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Participant 1 */}
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 text-blue-600">Participant 1 (Pro)</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full p-2 border border-gray-300 rounded"
-                  value={formData.participant1_name}
-                  onChange={e => setFormData({...formData, participant1_name: e.target.value})}
-                />
+          {participants.map((p, idx) => (
+             <div key={idx} className="bg-white p-6 rounded-lg shadow border border-gray-200">
+               <h2 className="text-xl font-semibold mb-4 text-gray-800">
+                   {idx === 0 ? "Participant 1 (Pro)" : idx === 1 ? "Participant 2 (Con)" : `Participant ${idx + 1}`}
+               </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full p-2 border border-gray-300 rounded"
+                      value={p.name}
+                      onChange={e => updateParticipant(idx, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Model</label>
+                    <select
+                      className="w-full p-2 border border-gray-300 rounded"
+                      value={p.model}
+                      onChange={e => updateParticipant(idx, 'model', e.target.value)}
+                    >
+                      {models.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">System Prompt</label>
+                    <textarea
+                      rows={4}
+                      className="w-full p-2 border border-gray-300 rounded text-sm"
+                      value={p.prompt}
+                      onChange={e => updateParticipant(idx, 'prompt', e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Model</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded"
-                  value={formData.participant1_model}
-                  onChange={e => setFormData({...formData, participant1_model: e.target.value})}
-                >
-                  {models.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">System Prompt</label>
-                <textarea
-                  rows={4}
-                  className="w-full p-2 border border-gray-300 rounded text-sm"
-                  value={formData.participant1_prompt}
-                  onChange={e => setFormData({...formData, participant1_prompt: e.target.value})}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Participant 2 */}
-          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-            <h2 className="text-xl font-semibold mb-4 text-red-600">Participant 2 (Con)</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full p-2 border border-gray-300 rounded"
-                  value={formData.participant2_name}
-                  onChange={e => setFormData({...formData, participant2_name: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Model</label>
-                <select
-                  className="w-full p-2 border border-gray-300 rounded"
-                  value={formData.participant2_model}
-                  onChange={e => setFormData({...formData, participant2_model: e.target.value})}
-                >
-                  {models.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">System Prompt</label>
-                <textarea
-                  rows={4}
-                  className="w-full p-2 border border-gray-300 rounded text-sm"
-                  value={formData.participant2_prompt}
-                  onChange={e => setFormData({...formData, participant2_prompt: e.target.value})}
-                />
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
         <button

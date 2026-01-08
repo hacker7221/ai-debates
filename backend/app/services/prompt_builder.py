@@ -2,10 +2,13 @@ from typing import List, Dict
 
 class PromptBuilder:
     @staticmethod
-    def build_system_prompt(role: str, persona: str, style: int) -> str:
+    def build_system_prompt(role: str, persona: str, style: int, language: str = "English") -> str:
         base = f"You are a participant in a debate. Your role is {role}."
         if persona:
             base += f" Your persona is: {persona}."
+        
+        # Language Instruction
+        base += f"\nIMPORTANT: You must output your response in {language}."
         
         intensity_map = {
             1: "Be extremely polite, calm, and academic.",

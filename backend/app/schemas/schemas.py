@@ -38,6 +38,7 @@ class ParticipantConfig(BaseModel):
 class DebateConfig(BaseModel):
     topic: str
     description: Optional[str] = None
+    language: str = "English"
     participants: List[ParticipantConfig]
     debate_preset_id: Optional[str] = "custom"
     length_preset: str = "medium" # short, medium, long

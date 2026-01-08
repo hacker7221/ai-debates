@@ -113,8 +113,19 @@ def process_turn_job(debate_id: str, seq_index: int):
         system_prompt = prompt_builder.build_system_prompt(
             speaker['role'], 
             speaker.get('persona_custom', 'Standard'), 
-            conf.get('intensity', 5)
+            conf.get('intensity', 5),
+            conf.get('language', 'English')
         )
+
+        # Handling length_preset
+        length_preset = conf.get('length_preset', 'medium')
+        length_map = {
+            'short': 'Keep your response short, around 100 words.',
+            'medium': 'Keep your response medium length, around 250 words.',
+            'long': 'You can provide a detailed response, around 500 words or more.'
+        }
+        length_instruction = length_map.get(length_preset, length_map['medium'])
+        system_prompt += f"\n\n{length_instruction}"
         
         # 4. Generate - Real OpenRouter Call
         full_text = ""
@@ -179,7 +190,8 @@ def process_turn_job(debate_id: str, seq_index: int):
 
         publish_event(debate_id, "turn_completed", {
             "seq_index": seq_index,
-            "text": full_text
+            "text": full_text,
+            "speaker_name": speaker['display_name']
         })
 
         # 6. Next Job
