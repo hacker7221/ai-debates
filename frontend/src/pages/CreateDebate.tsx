@@ -31,12 +31,14 @@ const CreateDebate = () => {
     const fetchModels = async () => {
       try {
         const res = await api.get('/models/');
-        setModels(res.data);
-        if (res.data.length > 0) {
+        // Backend returns { data: [...], timestamp: ... }
+        const modelsList = res.data.data || [];
+        setModels(modelsList);
+        if (modelsList.length > 0) {
           setFormData(prev => ({
             ...prev,
-            participant1_model: res.data[0].id,
-            participant2_model: res.data[0].id
+            participant1_model: modelsList[0].id,
+            participant2_model: modelsList[0].id
           }));
         }
       } catch (err) {
@@ -50,29 +52,43 @@ const CreateDebate = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Construct payload matching backend schema
+      // Pick a default model for moderator if not available
+      const defaultModModel = formData.participant1_model; // reuse p1 model
+
+      // Construct payload matching Backend DebateConfig schema
       const payload = {
         topic: formData.topic,
         description: formData.description,
         num_rounds: formData.num_rounds,
+        debate_preset_id: "custom",
         participants: [
-          {
-            name: formData.participant1_name,
-            model_id: formData.participant1_model,
-            prompt: formData.participant1_prompt,
-            position: 1
-          },
-          {
-            name: formData.participant2_name,
-            model_id: formData.participant2_model,
-            prompt: formData.participant2_prompt,
-            position: 2
-          }
+            // Implicit Moderator
+            {
+                role: "moderator",
+                model_id: defaultModModel,
+                display_name: "Moderator",
+                persona_custom: "You are an impartial debate moderator. Briefly introduce the next speaker and summarize the current state of the debate."
+            },
+            // P1
+            {
+                role: "debater",
+                model_id: formData.participant1_model,
+                display_name: formData.participant1_name,
+                persona_custom: formData.participant1_prompt
+            },
+            // P2
+            {
+                role: "debater",
+                model_id: formData.participant2_model,
+                display_name: formData.participant2_name,
+                persona_custom: formData.participant2_prompt
+            }
         ]
       };
 
       const res = await api.post('/debates/', payload);
-      navigate(`/debate/${res.data.id}`);
+      // The backend returns { debate_id: "...", ... }
+      navigate(`/debate/${res.data.debate_id}`);
     } catch (err) {
       console.error("Failed to create debate", err);
       alert("Error creating debate");

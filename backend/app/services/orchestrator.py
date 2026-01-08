@@ -76,21 +76,28 @@ def process_turn_job(debate_id: str, seq_index: int):
         debaters = [p for p in participants if p['role'] == 'debater']
         moderator = next((p for p in participants if p['role'] == 'moderator'), None)
         
-        max_turns = conf.get('limits', {}).get('max_turns_total', 10)
+        # Determine Max Turns
+        # If num_rounds is specified: (num_rounds * 2 debaters) + maybe moderator intros?
+        # Let's simplify: 1 Round = Mod + Debater1 + Debater2
+        num_rounds = conf.get('num_rounds', 3)
+        turns_per_round = len(debaters) + 1 if moderator else len(debaters)
+        max_turns_total = num_rounds * turns_per_round
         
-        if seq_index >= max_turns:
+        if seq_index >= max_turns_total:
             q.enqueue("app.services.orchestrator.finish_debate_job", debate_id=debate_id)
             return
 
         # Simple Round Robin: Mod -> D1 -> D2 -> Mod...
-        is_mod_turn = (seq_index % (len(debaters) + 1)) == 0
+        cycle_len = len(debaters) + (1 if moderator else 0)
+        pos_in_cycle = seq_index % cycle_len
         
-        if is_mod_turn:
+        if moderator and pos_in_cycle == 0:
             speaker = moderator
             turn_type = "moderator_comment"
         else:
             # debater index
-            d_idx = (seq_index - 1) % len(debaters)
+            # if mod exists, debaters start at index 1. so pos_in_cycle 1 -> debater 0
+            d_idx = (pos_in_cycle - 1) if moderator else pos_in_cycle
             speaker = debaters[d_idx]
             turn_type = "argument"
 
@@ -113,7 +120,7 @@ def process_turn_job(debate_id: str, seq_index: int):
         full_text = ""
         
         # Build Context (History)
-        prev_turns = db.query(Turn).filter(Turn.debate_id == uuid_id).order_by(Turn.seq_index).all()
+        prev_turns = db.query(Turn).filter(Turn.debate_id == uuid.UUID(debate_id)).order_by(Turn.seq_index).all()
         history_str = ""
         for t in prev_turns:
             history_str += f"{t.speaker_name}: {t.text}\n\n"

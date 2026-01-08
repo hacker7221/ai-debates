@@ -37,9 +37,11 @@ class ParticipantConfig(BaseModel):
 
 class DebateConfig(BaseModel):
     topic: str
+    description: Optional[str] = None
     participants: List[ParticipantConfig]
-    debate_preset_id: str
+    debate_preset_id: Optional[str] = "custom"
     length_preset: str = "medium" # short, medium, long
+    num_rounds: Optional[int] = 3
     intensity: int = 5
     user_provider_key: Optional[str] = None
 
