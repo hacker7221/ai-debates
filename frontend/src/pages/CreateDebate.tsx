@@ -172,11 +172,27 @@ const TOPIC_TEMPLATES = [
   }
 ];
 
+const STYLE_PRESETS = [
+    { label: "Neutral / Logical", desc: "Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts." },
+    { label: "Respectful / Polite", desc: "Be consistently polite and respectful. Acknowledge valid points from other speakers." },
+    { label: "Aggressive / Confrontational", desc: "Be aggressive and confrontational. Attack the opponent's arguments relentlessly and show no mercy." },
+    { label: "Sarcastic / Witty", desc: "Use sarcasm, irony, and wit to undermine the opponent's position. Be clever and biting." },
+    { label: "Emotional / Passionate", desc: "Appeal to emotion. Use passionate language, vivid anecdotes, and strong feelings." },
+    { label: "Rude / Vulgar (NSFW)", desc: "Be raw, rude, and use strong language/profanity if necessary to make a point. Don't hold back." },
+    { label: "Academic / Formal", desc: "Use formal, academic language. Cite abstract concepts and theoretical frameworks." },
+    { label: "Simple / ELI5", desc: "Explain arguments simply as if to a 5-year-old. Avoid jargon and complex sentences." },
+];
+
 const CreateDebate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const templatesRef = useRef<HTMLDivElement>(null);
+  
+  // Track open style dropdowns by participant index
+  const [openStyleIdx, setOpenStyleIdx] = useState<number | null>(null);
+  const styleRef = useRef<HTMLDivElement>(null);
+
   const [models, setModels] = useState<Model[]>([]);
   
   const [settings, setSettings] = useState({
@@ -190,15 +206,18 @@ const CreateDebate = () => {
   });
 
   const [participants, setParticipants] = useState([
-      { name: 'Debater 1', model: '', prompt: 'You are a skilled debater. Argue in favor of the topic.', position: 1 },
-      { name: 'Debater 2', model: '', prompt: 'You are a skilled debater. Argue against the topic.', position: 2 }
+      { name: 'Debater 1', model: '', prompt: 'You are a skilled debater. Argue in favor of the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 1 },
+      { name: 'Debater 2', model: '', prompt: 'You are a skilled debater. Argue against the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 2 }
   ]);
 
-  // Click outside to close templates
+  // Click outside to close templates and style dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (templatesRef.current && !templatesRef.current.contains(event.target as Node)) {
         setShowTemplates(false);
+      }
+      if (styleRef.current && !styleRef.current.contains(event.target as Node)) {
+          setOpenStyleIdx(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -242,7 +261,7 @@ const CreateDebate = () => {
                  added.push({
                      name: `Debater ${i}`,
                      model: defaultModelId,
-                     prompt: `You are a skilled debater. Provide a unique perspective on the topic (Position ${i}).`,
+                     prompt: `You are a skilled debater. Provide a unique perspective on the topic (Position ${i}).\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.`,
                      position: i
                  });
              }
@@ -259,6 +278,23 @@ const CreateDebate = () => {
       newP[index] = { ...newP[index], [field]: value };
       setParticipants(newP);
   };
+
+  const applyStyle = (index: number, styleDesc: string) => {
+      const p = participants[index];
+      // Regex to find existing "Style: ..." block
+      // We look for "Style: " followed by anything until end of string or double newline
+      // But simplifying: Just append if not found, or replace if specific pattern exists
+      
+      let newPrompt = p.prompt;
+      if (newPrompt.includes('Style: ')) {
+          newPrompt = newPrompt.replace(/Style: .*$/s, `Style: ${styleDesc}`);
+      } else {
+          newPrompt = `${newPrompt}\n\nStyle: ${styleDesc}`;
+      }
+      
+      updateParticipant(index, 'prompt', newPrompt);
+      setOpenStyleIdx(null);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -470,7 +506,37 @@ const CreateDebate = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">System Prompt</label>
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700">System Prompt</label>
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenStyleIdx(openStyleIdx === idx ? null : idx);
+                                }}
+                                className="text-xs flex items-center bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-gray-600 transition-colors"
+                            >
+                                <ChevronDown className="w-3 h-3 mr-1" /> Choose Style
+                            </button>
+                            {openStyleIdx === idx && (
+                                <div ref={styleRef} className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-20 max-h-60 overflow-y-auto">
+                                    <div className="p-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Select Persona Style</div>
+                                    {STYLE_PRESETS.map((style, sIdx) => (
+                                        <button
+                                            key={sIdx}
+                                            type="button"
+                                            onClick={() => applyStyle(idx, style.desc)}
+                                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors border-b last:border-0 border-gray-50 group"
+                                        >
+                                            <div className="text-xs font-bold text-gray-800">{style.label}</div>
+                                            <div className="text-[10px] text-gray-500 leading-tight">{style.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     <textarea
                       rows={4}
                       className="w-full p-2 border border-gray-300 rounded text-sm"
