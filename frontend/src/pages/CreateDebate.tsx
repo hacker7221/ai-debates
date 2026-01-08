@@ -188,6 +188,17 @@ const STYLE_PRESETS = [
     { label: "Simple / ELI5", desc: "Explain arguments simply as if to a 5-year-old. Avoid jargon and complex sentences." },
 ];
 
+const getLangCode = (langName: string) => {
+    switch (langName) {
+        case 'Russian': return 'ru';
+        case 'Spanish': return 'es';
+        case 'French': return 'fr';
+        case 'German': return 'de';
+        case 'Chinese': return 'zh';
+        default: return 'en';
+    }
+};
+
 const CreateDebate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -267,25 +278,31 @@ const CreateDebate = () => {
     fetchModels();
   }, []);
 
-  // Set default voices when they load
+  // Set default voices when they load or when language changes
   useEffect(() => {
       if (voices.length > 0) {
+          const langCode = getLangCode(settings.language);
+          const langVoices = voices.filter(v => v.lang.startsWith(langCode));
+          const fallbackVoices = langVoices.length > 0 ? langVoices : voices;
+
           setSettings(prev => {
-             if (prev.moderator_voice) return prev;
-             const defaultMod = voices.find(v => v.name.includes('Google US English')) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+             // If current voice matches language, keep it. Otherwise switch.
+             const currentVoice = voices.find(v => v.name === prev.moderator_voice);
+             if (currentVoice && currentVoice.lang.startsWith(langCode)) return prev;
+
+             const defaultMod = fallbackVoices.find(v => v.name.includes('Google US English') && langCode === 'en') || fallbackVoices[0];
              return { ...prev, moderator_voice: defaultMod.name };
           });
 
           setParticipants(prev => prev.map((p, idx) => {
-              if (p.voice) return p;
-              const enVoices = voices.filter(v => v.lang.startsWith('en'));
-              // Skip the voice used by moderator if possible to avoid confusion, or not.
-              // Just pick round robin
-              const choice = enVoices.length > 0 ? enVoices[(idx + 1) % enVoices.length] : voices[0];
+              const currentVoice = voices.find(v => v.name === p.voice);
+              if (currentVoice && currentVoice.lang.startsWith(langCode)) return p;
+              
+              const choice = fallbackVoices.length > 0 ? fallbackVoices[(idx + 1) % fallbackVoices.length] : voices[0];
               return { ...p, voice: choice.name };
           }));
       }
-  }, [voices]);
+  }, [voices, settings.language]);
 
 
   // Update participant count
@@ -299,12 +316,15 @@ const CreateDebate = () => {
              const added = [];
              const defaultModelId = models.length > 0 ? (models.find(m => m.name.toLowerCase().includes('(free)')) || models[0]).id : '';
              
+             const langCode = getLangCode(settings.language);
+             const langVoices = voices.filter(v => v.lang.startsWith(langCode));
+             const fallbackVoices = langVoices.length > 0 ? langVoices : voices;
+
              for (let i = prev.length + 1; i <= newCount; i++) {
                  // Try to assign a voice
                  let voiceName = '';
                  if (voices.length > 0) {
-                     const enVoices = voices.filter(v => v.lang.startsWith('en'));
-                     const choice = enVoices.length > 0 ? enVoices[i % enVoices.length] : voices[0];
+                     const choice = fallbackVoices.length > 0 ? fallbackVoices[i % fallbackVoices.length] : voices[0];
                      voiceName = choice.name;
                  }
 
@@ -322,7 +342,7 @@ const CreateDebate = () => {
              return prev.slice(0, newCount);
          }
      });
-  }, [settings.num_participants, models, voices]);
+  }, [settings.num_participants, models, voices, settings.language]);
 
   const updateParticipant = (index: number, field: string, value: string) => {
       const newP = [...participants];
@@ -542,9 +562,15 @@ const CreateDebate = () => {
                           onChange={e => setSettings({...settings, moderator_voice: e.target.value})}
                         >
                            <option value="">Default Browser Voice</option>
-                           {voices.map((v, i) => (
+                           {voices.filter(v => v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
                                <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name}</option>
                            ))}
+                           {/* Fallback: Show others if needed or label group */}
+                           <optgroup label="Other Languages">
+                                {voices.filter(v => !v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
+                                   <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name} ({v.lang})</option>
+                                ))}
+                           </optgroup>
                         </select>
                         <button
                             type="button"
@@ -599,9 +625,14 @@ const CreateDebate = () => {
                               value={p.voice}
                               onChange={e => updateParticipant(idx, 'voice', e.target.value)}
                             >
-                               {voices.map((v, i) => (
+                               {voices.filter(v => v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
                                    <option key={i} value={v.name}>{v.name.length > 25 ? v.name.slice(0,25)+'...' : v.name}</option>
                                ))}
+                               <optgroup label="Other Languages">
+                                    {voices.filter(v => !v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
+                                       <option key={i} value={v.name}>{v.name.length > 25 ? v.name.slice(0,25)+'...' : v.name} ({v.lang})</option>
+                                    ))}
+                               </optgroup>
                             </select>
                             <button
                                 type="button"
