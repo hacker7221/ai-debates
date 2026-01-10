@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/axios';
-import { ArrowLeft, User, Bot, Clock, Download, Volume2, Square, Play } from 'lucide-react';
+import { ArrowLeft, User, Bot, Clock, Download, Volume2, Square, Play, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -321,9 +321,36 @@ const DebateLive = () => {
             const speaker = debate.participants.find(p => p.name === turn.speaker_name);
             const avatarUrl = speaker?.avatar;
 
+            // Check for error (starts with [Error...)
+            const isError = turn.text.trim().startsWith('[Error');
+            
+            // Try to extract clean error message
+            let displayError = turn.text;
+            if (isError) {
+                try {
+                   // Simple regex to grab the OpenRouter message or just show the start
+                   const match = turn.text.match(/OpenRouter Error \d+: (.*)/);
+                   if (match) {
+                       const jsonPart = match[1].replace(/}\]$/, '}'); // Clean trailing ]
+                       const parsed = JSON.parse(jsonPart);
+                       if (parsed.error && parsed.error.message) {
+                           displayError = `API Error: ${parsed.error.message}`;
+                           if (parsed.error.metadata && parsed.error.metadata.provider_name) {
+                               displayError += ` (${parsed.error.metadata.provider_name})`;
+                           }
+                       }
+                   } else {
+                       // Fallback cleanup
+                       displayError = turn.text.replace(/^\[Error generating response: /, '').replace(/\]$/, '');
+                   }
+                } catch (e) {
+                   displayError = "Failed to generate response due to an API error."; 
+                }
+            }
+
             return (
             <div key={turn.seq_index} className={`flex flex-col ${isMod ? 'items-start' : 'items-end'}`}>
-                <div className="flex items-end gap-2 max-w-[85%]">
+                <div className="flex items-end gap-2 max-w-[90%] md:max-w-[85%]">
                     {/* Model Avatar (Left) */}
                     {isMod && (
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border border-gray-300">
@@ -331,20 +358,38 @@ const DebateLive = () => {
                         </div>
                     )}
                     
-                    <div className={`flex-1 rounded-2xl p-4 ${isMod ? 'bg-gray-100 border border-gray-200' : 'bg-blue-50 border border-blue-100 hover:shadow-md'} transition-shadow`}>
+                    <div className={`flex-1 rounded-2xl p-4 transition-shadow ${
+                        isError 
+                        ? 'bg-red-50 border border-red-200 text-red-800' 
+                        : isMod 
+                            ? 'bg-gray-100 border border-gray-200' 
+                            : 'bg-blue-50 border border-blue-100 hover:shadow-md'
+                    }`}>
                         <div className="flex justify-between items-center mb-1">
-                            <p className="text-xs font-semibold text-gray-500 mr-4">{turn.speaker_name}</p>
-                            <button 
-                                onClick={() => startPlayback(index)}
-                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-200/50 rounded-full transition-colors"
-                                title="Play from here"
-                            >
-                                <Play className="w-3 h-3 fill-current" />
-                            </button>
+                            <p className={`text-xs font-semibold mr-4 ${isError ? 'text-red-600' : 'text-gray-500'}`}>{turn.speaker_name}</p>
+                            {!isError && (
+                                <button 
+                                    onClick={() => startPlayback(index)}
+                                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-200/50 rounded-full transition-colors"
+                                    title="Play from here"
+                                >
+                                    <Play className="w-3 h-3 fill-current" />
+                                </button>
+                            )}
                         </div>
-                        <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.text}</ReactMarkdown>
-                        </div>
+                        
+                        {isError ? (
+                            <div className="flex items-start gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <div className="text-sm font-medium whitespace-pre-wrap break-words">
+                                    {displayError}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.text}</ReactMarkdown>
+                            </div>
+                        )}
                     </div>
 
                     {/* Debater Avatar (Right) */}
