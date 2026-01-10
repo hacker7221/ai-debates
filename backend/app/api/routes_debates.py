@@ -55,7 +55,8 @@ async def create_debate(
             role="moderator",
             model_id=mod_config.model_id,
             persona_name=mod_config.display_name,
-            voice_name=mod_config.voice_name
+            voice_name=mod_config.voice_name,
+            avatar_url=mod_config.avatar_url
         )
         db.add(mod_participant)
 
@@ -67,7 +68,8 @@ async def create_debate(
                 role="debater",
                 model_id=p.model_id,
                 persona_name=p.display_name,
-                voice_name=p.voice_name
+                voice_name=p.voice_name,
+                avatar_url=p.avatar_url
             )
             db.add(deb_participant)
     
@@ -133,7 +135,7 @@ async def get_debate(debate_id: str, db: AsyncSession = Depends(get_db)):
         "title": debate.title,
         "created_at": debate.created_at,
         "participants": [
-            {"name": p.persona_name, "role": p.role, "model": p.model_id, "voice_name": p.voice_name}
+            {"name": p.persona_name, "role": p.role, "model": p.model_id, "voice_name": p.voice_name, "avatar": p.avatar_url}
             for p in debate.participants
         ],
         "turns": sorted(

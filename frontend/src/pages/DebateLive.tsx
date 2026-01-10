@@ -17,6 +17,7 @@ interface Participant {
   role: string;
   model: string;
   voice_name?: string;
+  avatar?: string;
 }
 
 interface Debate {
@@ -291,8 +292,12 @@ const DebateLive = () => {
 
              return (
                 <div key={idx} className={`flex items-center space-x-2 min-w-fit ${isDebater ? 'flex-row-reverse space-x-reverse' : 'mr-auto pr-8'}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!isDebater ? 'bg-blue-600' : 'bg-red-600'} text-white shrink-0`}>
-                        <Bot />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!isDebater ? 'bg-blue-600' : 'bg-red-600'} text-white shrink-0 overflow-hidden bg-gray-100`}>
+                        {p.avatar ? (
+                            <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <Bot className="w-6 h-6 text-gray-400" />
+                        )}
                     </div>
                     <div className={isDebater ? 'text-right' : ''}>
                         <p className="font-bold whitespace-nowrap">{p.name}</p>
@@ -313,22 +318,41 @@ const DebateLive = () => {
       <div className="space-y-6">
         {debate.turns.map((turn, index) => {
             const isMod = isModerator(turn.speaker_name);
+            const speaker = debate.participants.find(p => p.name === turn.speaker_name);
+            const avatarUrl = speaker?.avatar;
+
             return (
             <div key={turn.seq_index} className={`flex flex-col ${isMod ? 'items-start' : 'items-end'}`}>
-                <div className={`max-w-[80%] rounded-2xl p-4 ${isMod ? 'bg-gray-100 border border-gray-200' : 'bg-blue-50 border border-blue-100 hover:shadow-md'} transition-shadow`}>
-                    <div className="flex justify-between items-center mb-1">
-                        <p className="text-xs font-semibold text-gray-500 mr-4">{turn.speaker_name}</p>
-                        <button 
-                            onClick={() => startPlayback(index)}
-                            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-200/50 rounded-full transition-colors"
-                            title="Play from here"
-                        >
-                            <Play className="w-3 h-3 fill-current" />
-                        </button>
+                <div className="flex items-end gap-2 max-w-[85%]">
+                    {/* Model Avatar (Left) */}
+                    {isMod && (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border border-gray-300">
+                             {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover"/> : <Bot className="p-1"/>}
+                        </div>
+                    )}
+                    
+                    <div className={`flex-1 rounded-2xl p-4 ${isMod ? 'bg-gray-100 border border-gray-200' : 'bg-blue-50 border border-blue-100 hover:shadow-md'} transition-shadow`}>
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-xs font-semibold text-gray-500 mr-4">{turn.speaker_name}</p>
+                            <button 
+                                onClick={() => startPlayback(index)}
+                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-gray-200/50 rounded-full transition-colors"
+                                title="Play from here"
+                            >
+                                <Play className="w-3 h-3 fill-current" />
+                            </button>
+                        </div>
+                        <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.text}</ReactMarkdown>
+                        </div>
                     </div>
-                    <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{turn.text}</ReactMarkdown>
-                    </div>
+
+                    {/* Debater Avatar (Right) */}
+                    {!isMod && (
+                        <div className="w-8 h-8 rounded-full bg-red-100 flex-shrink-0 overflow-hidden border border-red-200">
+                             {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover"/> : <Bot className="p-1"/>}
+                        </div>
+                    )}
                 </div>
             </div>
             );
@@ -336,14 +360,18 @@ const DebateLive = () => {
 
         {streamingTurn && (
              <div className={`flex flex-col animate-pulse ${isModerator(streamingTurn.speaker) ? 'items-start' : 'items-end'}`}>
-                <div className={`max-w-[80%] rounded-2xl p-4 border ${isModerator(streamingTurn.speaker) ? 'bg-gray-100 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
-                     <p className="text-xs font-semibold text-gray-500 mb-1">{streamingTurn.speaker || "Thinking..."}</p>
-                     <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingTurn.text}</ReactMarkdown>
-                        {/* Cursor */}
-                        <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse">|</span>
-                     </div>
-                </div>
+                 <div className="flex items-end gap-2 max-w-[85%]">
+                    {isModerator(streamingTurn.speaker) && <div className="w-8 h-8 rounded-full bg-gray-200" />}
+                    
+                    <div className={`flex-1 rounded-2xl p-4 border ${isModerator(streamingTurn.speaker) ? 'bg-gray-100 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
+                         <p className="text-xs font-semibold text-gray-500 mb-1">{streamingTurn.speaker || "Thinking..."}</p>
+                         <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingTurn.text}</ReactMarkdown>
+                            {/* Cursor */}
+                            <span className="inline-block w-2 h-4 ml-1 bg-gray-400 animate-pulse">|</span>
+                         </div>
+                    </div>
+                 </div>
              </div>
         )}
         <div ref={scrollRef} />

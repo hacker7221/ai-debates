@@ -199,6 +199,8 @@ const getLangCode = (langName: string) => {
     }
 };
 
+const getAvatarUrl = (seed: string) => `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${seed}`;
+
 const CreateDebate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -232,12 +234,13 @@ const CreateDebate = () => {
     length_preset: 'short', // short, medium, long
     moderator_model: '',
     moderator_voice: '', // Added voice
+    moderator_avatar: 'ModeratorBot',
     num_participants: 2, // 2-5
   });
 
   const [participants, setParticipants] = useState([
-      { name: 'Debater 1', model: '', voice: '', prompt: 'You are a skilled debater. Argue in favor of the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 1 },
-      { name: 'Debater 2', model: '', voice: '', prompt: 'You are a skilled debater. Argue against the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 2 }
+      { name: 'Debater 1', model: '', voice: '', avatar: 'Debater1', prompt: 'You are a skilled debater. Argue in favor of the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 1 },
+      { name: 'Debater 2', model: '', voice: '', avatar: 'Debater2', prompt: 'You are a skilled debater. Argue against the topic.\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.', position: 2 }
   ]);
 
 
@@ -342,6 +345,7 @@ const CreateDebate = () => {
                      name: `Debater ${i}`,
                      model: defaultModelId,
                      voice: voiceName,
+                     avatar: `Debater${i}-${Math.random().toString(36).substring(7)}`,
                      prompt: `You are a skilled debater. Provide a unique perspective on the topic (Position ${i}).\n\nStyle: Maintain a neutral, objective, and logical tone. Avoid emotional language and focus on facts.`,
                      position: i
                  });
@@ -405,7 +409,8 @@ const CreateDebate = () => {
                 model_id: defaultModModel,
                 display_name: "Moderator",
                 persona_custom: "You are an impartial debate moderator. Briefly introduce the next speaker and summarize the current state of the debate.",
-                voice_name: settings.moderator_voice
+                voice_name: settings.moderator_voice,
+                avatar_url: getAvatarUrl(settings.moderator_avatar)
             },
             // Dynamic Debaters
             ...participants.map(p => ({
@@ -413,7 +418,8 @@ const CreateDebate = () => {
                 model_id: p.model,
                 display_name: p.name,
                 persona_custom: p.prompt,
-                voice_name: p.voice
+                voice_name: p.voice,
+                avatar_url: getAvatarUrl(p.avatar)
             }))
         ]
       };
@@ -593,6 +599,23 @@ const CreateDebate = () => {
                     </div>
                 </div>
             </div>
+            
+            <div className="pt-2 border-t border-gray-100 mt-2 flex items-center">
+                 <div className="mr-4">
+                    <img 
+                        src={getAvatarUrl(settings.moderator_avatar)} 
+                        alt="Moderator Avatar" 
+                        className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200"
+                    />
+                 </div>
+                 <button
+                    type="button"
+                    onClick={() => setSettings({...settings, moderator_avatar: Math.random().toString(36).substring(7)})}
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                 >
+                    Randomize Avatar
+                 </button>
+            </div>
 
           </div>
         </div>
@@ -604,15 +627,31 @@ const CreateDebate = () => {
                    {idx === 0 ? "Participant 1 (Pro)" : idx === 1 ? "Participant 2 (Con)" : `Participant ${idx + 1}`}
                </h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full h-10 p-2 border border-gray-300 rounded"
-                      value={p.name}
-                      onChange={e => updateParticipant(idx, 'name', e.target.value)}
-                    />
+                  <div className="flex items-start space-x-4">
+                     <div className="flex-shrink-0 flex flex-col items-center space-y-2">
+                        <img 
+                            src={getAvatarUrl(p.avatar)} 
+                            alt="Avatar" 
+                            className="w-16 h-16 rounded-full bg-gray-50 border border-gray-200"
+                        />
+                        <button 
+                            type="button"
+                            onClick={() => updateParticipant(idx, 'avatar', Math.random().toString(36).substring(7))}
+                            className="text-xs text-blue-500 hover:text-blue-700 underline"
+                        >
+                            Randomize
+                        </button>
+                     </div>
+                     <div className="flex-grow">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full h-10 p-2 border border-gray-300 rounded"
+                          value={p.name}
+                          onChange={e => updateParticipant(idx, 'name', e.target.value)}
+                        />
+                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
