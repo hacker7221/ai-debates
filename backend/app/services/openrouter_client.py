@@ -155,6 +155,24 @@ class OpenRouterClient:
             return False
 
 
+    async def get_credits(self) -> float:
+        """
+        Get current account credits.
+        """
+        headers = {
+            "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(f"{self.BASE_URL}/credits", headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    return float(data.get("data", {}).get("total_credits", 0))
+                return 0.0
+        except Exception as e:
+            print(f"Error fetching credits: {e}")
+            return 0.0
+
     async def get_models(self) -> List[Dict[str, Any]]:
         """
         Fetch models from OpenRouter with simple caching.

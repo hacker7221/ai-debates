@@ -6,6 +6,14 @@ import asyncio
 
 router = APIRouter()
 
+@router.get("/credits")
+async def get_credits():
+    """
+    Get current account credits.
+    """
+    credits = await openrouter_client.get_credits()
+    return {"credits": credits}
+
 @router.get("", response_model=ModelsResponse)
 async def get_models():
     """

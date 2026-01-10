@@ -214,6 +214,7 @@ const CreateDebate = () => {
   const styleRef = useRef<HTMLDivElement>(null);
 
   const [models, setModels] = useState<Model[]>([]);
+  const [credits, setCredits] = useState<number | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
@@ -263,9 +264,16 @@ const CreateDebate = () => {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const res = await api.get('/models/');
+        const [resModels, resCredits] = await Promise.all([
+            api.get('/models/'),
+            api.get('/models/credits')
+        ]);
+
+        const currentCredits = resCredits.data?.credits || 0;
+        setCredits(currentCredits);
+
         // Backend returns { data: [...], timestamp: ... }
-        let modelsList: Model[] = res.data.data || [];
+        let modelsList: Model[] = resModels.data.data || [];
         
         // Sort: Free models first, then by name
         modelsList.sort((a, b) => {
@@ -288,7 +296,7 @@ const CreateDebate = () => {
             })));
         }
       } catch (err) {
-        console.error("Failed to fetch models", err);
+        console.error("Failed to fetch data", err);
       }
     };
     fetchModels();
@@ -618,14 +626,22 @@ const CreateDebate = () => {
                                 <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </optgroup>
-                          <optgroup label="Paid Models (Disabled - No Credits)">
+                          <optgroup label={`Paid Models ${credits !== null && credits <= 0 ? '(Disabled due to low credits)' : ''}`}>
                               {models.filter(m => !m.is_free).map(m => (
-                                <option key={m.id} value={m.id} disabled>{m.name} ($)</option>
+                                <option key={m.id} value={m.id} disabled={credits !== null && credits <= 0}>{m.name} ($)</option>
                               ))}
                           </optgroup>
                         </select>
                         {/* Legend/Helper text */}
-                        <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits.</div>
+                        {credits !== null && credits <= 0 && (
+                            <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits ($0.00).</div>
+                        )}
+                        {credits !== null && credits > 0 && (
+                             <div className="text-[10px] text-green-600 mt-1 flex items-center">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1"></div>
+                                 Credits available: ${credits.toFixed(2)}
+                             </div>
+                        )}
                     </div>
                 </div>
                 <div>
@@ -725,9 +741,9 @@ const CreateDebate = () => {
                                 <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </optgroup>
-                          <optgroup label="Paid Models (Disabled)">
+                          <optgroup label={`Paid Models ${credits !== null && credits <= 0 ? '(Disabled)' : ''}`}>
                               {models.filter(m => !m.is_free).map(m => (
-                                <option key={m.id} value={m.id} disabled>{m.name} ($)</option>
+                                <option key={m.id} value={m.id} disabled={credits !== null && credits <= 0}>{m.name} ($)</option>
                               ))}
                           </optgroup>
                         </select>
