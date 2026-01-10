@@ -63,17 +63,19 @@ class OpenRouterClient:
             }
 
             try:
+                # print(f"[OpenRouter] Requesting {model} with attempt {attempt}...")
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     async with client.stream("POST", f"{self.BASE_URL}/chat/completions", json=payload, headers=headers) as response:
                         if response.status_code != 200:
                             err_text = await response.aread()
+                            print(f"[OpenRouter] Erorr Status {response.status_code} for {model}: {err_text}")
                             # If it's a 400 error and we haven't tried merging yet, loop continue
                             if response.status_code == 400 and attempt == "standard" and "merged_system" in attempts:
                                 print(f"OpenRouter 400 Error for {model}, retrying with merged system prompt...")
-                                last_error = Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8')}")
+                                last_error = Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8', errors='replace')}")
                                 continue
                             
-                            raise Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8')}")
+                            raise Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8', errors='replace')}")
 
                         async for line in response.aiter_lines():
                             if line.strip().startswith("data: "):
@@ -87,9 +89,14 @@ class OpenRouterClient:
                                         yield delta
                                 except json.JSONDecodeError:
                                     continue
+                            # else:
+                                # if line.strip():
+                                    # print(f"[OpenRouter] Non-SSE line from {model}: {line}")
+
                 # If we successfully streamed, return (break loop)
                 return 
             except Exception as e:
+                print(f"[OpenRouter] Attempt '{attempt}' failed for model {model}: {e}")
                 last_error = e
                 # Only suppress and retry if we have retries left and it was potentially a format issue
                 if attempt == "standard" and "merged_system" in attempts:
@@ -122,7 +129,8 @@ class OpenRouterClient:
                 async with client.stream("POST", f"{self.BASE_URL}/chat/completions", json=payload, headers=headers) as response:
                     if response.status_code != 200:
                         # Ensure we consume the error to avoid hanging
-                        await response.aread()
+                        err_text = await response.aread()
+                        print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_text.decode('utf-8', errors='replace')}")
                         return False
 
                     # Check if we can get at least one chunk of data

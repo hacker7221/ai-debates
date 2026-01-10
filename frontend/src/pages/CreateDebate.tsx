@@ -207,6 +207,17 @@ const formatPrice = (pricing: { prompt: string; completion: string }) => {
     return `$${c.toFixed(2)}`;
 };
 
+const formatContext = (length: number) => {
+    if (!length) return '?';
+    if (length >= 1000000) {
+        return `${Math.round(length / 1000000)}M`;
+    }
+    if (length >= 1000) {
+        return `${Math.round(length / 1000)}k`;
+    }
+    return `${length}`;
+};
+
 const CreateDebate = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -668,91 +679,93 @@ const CreateDebate = () => {
               </select>
             </div>
 
-            <div className="pt-2 border-t border-gray-100 mt-2 grid md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Model</label>
-                    <div className="relative">
-                        <select
-                          className="w-full h-10 p-2 border border-gray-300 rounded"
-                          value={settings.moderator_model}
-                          onChange={e => setSettings({...settings, moderator_model: e.target.value})}
-                        >
-                          <optgroup label="Free Models">
-                              {models.filter(m => m.is_free).map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
-                              ))}
-                          </optgroup>
-                          <optgroup label={`Paid Models ${isPaidLocked ? '(Disabled due to low credits)' : '($ per 1M tokens)'}`}>
-                              {models.filter(m => !m.is_free).map(m => (
-                                <option key={m.id} value={m.id} disabled={isPaidLocked}>
-                                    {m.name} ({formatPrice(m.pricing)})
-                                </option>
-                              ))}
-                          </optgroup>
-                        </select>
-                        {/* Legend/Helper text */}
-                        {credits !== null && credits <= 0 && !customApiKey && (
-                            <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits ($0.00). Use your own key below to unlock.</div>
-                        )}
-                        {customApiKey && (
-                            <div className={`text-[10px] mt-1 font-medium ${isPaidLocked ? 'text-red-500' : 'text-blue-600'}`}>
-                                {checkingKey ? 'Checking key...' : isPaidLocked ? 'Custom Key has insufficient credits.' : 'Custom API Key active. Paid models unlocked.'}
-                            </div>
-                        )}
-                        {credits !== null && credits > 0 && (
-                             <div className="text-[10px] text-green-600 mt-1 flex items-center">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1"></div>
-                                 Credits available: ${credits.toFixed(2)}
-                             </div>
-                        )}
-                    </div>
-                </div>
-                <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Voice</label>
-                     <div className="flex space-x-2">
-                        <select
-                          className="w-full h-10 p-2 border border-gray-300 rounded text-sm"
-                          value={settings.moderator_voice}
-                          onChange={e => setSettings({...settings, moderator_voice: e.target.value})}
-                        >
-                           <option value="">Default Browser Voice</option>
-                           {voices.filter(v => v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
-                               <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name}</option>
-                           ))}
-                           {/* Fallback: Show others if needed or label group */}
-                           <optgroup label="Other Languages">
-                                {voices.filter(v => !v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
-                                   <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name} ({v.lang})</option>
-                                ))}
-                           </optgroup>
-                        </select>
-                        <button
-                            type="button"
-                            onClick={() => previewVoice(settings.moderator_voice, "Welcome to the debate.")}
-                            className="h-10 w-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200"
-                            title="Preview Voice"
-                        >
-                            <Volume2 className="w-4 h-4"/>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="pt-2 border-t border-gray-100 mt-2 flex items-center">
-                 <div className="mr-4">
+            <div className="pt-2 border-t border-gray-100 mt-2 flex gap-4">
+                {/* Avatar Column */}
+                <div className="flex-shrink-0 flex flex-col items-center space-y-2 pt-6">
                     <img 
                         src={getAvatarUrl(settings.moderator_avatar)} 
                         alt="Moderator Avatar" 
-                        className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200"
+                        className="w-14 h-14 rounded-full bg-gray-100 border border-gray-200"
                     />
-                 </div>
-                 <button
-                    type="button"
-                    onClick={() => setSettings({...settings, moderator_avatar: Math.random().toString(36).substring(7)})}
-                    className="text-sm text-blue-600 hover:text-blue-800 underline"
-                 >
-                    Randomize Avatar
-                 </button>
+                    <button
+                        type="button"
+                        onClick={() => setSettings({...settings, moderator_avatar: Math.random().toString(36).substring(7)})}
+                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                        Randomize
+                    </button>
+                </div>
+
+                {/* Controls */}
+                <div className="flex-grow grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Model</label>
+                        <div className="relative">
+                            <select
+                            className="w-full h-10 p-2 border border-gray-300 rounded"
+                            value={settings.moderator_model}
+                            onChange={e => setSettings({...settings, moderator_model: e.target.value})}
+                            >
+                            <optgroup label="Free Models">
+                                {models.filter(m => m.is_free).map(m => (
+                                    <option key={m.id} value={m.id}>{m.name} ({formatContext(m.context_length)})</option>
+                                ))}
+                            </optgroup>
+                            <optgroup label={`Paid Models ${isPaidLocked ? '(Disabled due to low credits)' : '($ per 1M tokens)'}`}>
+                                {models.filter(m => !m.is_free).map(m => (
+                                    <option key={m.id} value={m.id} disabled={isPaidLocked}>
+                                        {m.name} ({formatContext(m.context_length)} | {formatPrice(m.pricing)})
+                                    </option>
+                                ))}
+                            </optgroup>
+                            </select>
+                            {/* Legend/Helper text */}
+                            {credits !== null && credits <= 0 && !customApiKey && (
+                                <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits ($0.00). Use your own key below to unlock.</div>
+                            )}
+                            {customApiKey && (
+                                <div className={`text-[10px] mt-1 font-medium ${isPaidLocked ? 'text-red-500' : 'text-blue-600'}`}>
+                                    {checkingKey ? 'Checking key...' : isPaidLocked ? 'Custom Key has insufficient credits.' : 'Custom API Key active. Paid models unlocked.'}
+                                </div>
+                            )}
+                            {credits !== null && credits > 0 && (
+                                <div className="text-[10px] text-green-600 mt-1 flex items-center">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1"></div>
+                                    Credits available: ${credits.toFixed(2)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Voice</label>
+                        <div className="flex space-x-2">
+                            <select
+                            className="w-full h-10 p-2 border border-gray-300 rounded text-sm"
+                            value={settings.moderator_voice}
+                            onChange={e => setSettings({...settings, moderator_voice: e.target.value})}
+                            >
+                            <option value="">Default Browser Voice</option>
+                            {voices.filter(v => v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
+                                <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name}</option>
+                            ))}
+                            {/* Fallback: Show others if needed or label group */}
+                            <optgroup label="Other Languages">
+                                    {voices.filter(v => !v.lang.startsWith(getLangCode(settings.language))).map((v, i) => (
+                                    <option key={i} value={v.name}>{v.name.length > 30 ? v.name.slice(0,30)+'...' : v.name} ({v.lang})</option>
+                                    ))}
+                            </optgroup>
+                            </select>
+                            <button
+                                type="button"
+                                onClick={() => previewVoice(settings.moderator_voice, "Welcome to the debate.")}
+                                className="h-10 w-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200"
+                                title="Preview Voice"
+                            >
+                                <Volume2 className="w-4 h-4"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="pt-4 border-t border-gray-100 mt-4">
@@ -826,13 +839,13 @@ const CreateDebate = () => {
                         >
                           <optgroup label="Free Models">
                               {models.filter(m => m.is_free).map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
+                                <option key={m.id} value={m.id}>{m.name} ({formatContext(m.context_length)})</option>
                               ))}
                           </optgroup>
                           <optgroup label={`Paid Models ${isPaidLocked ? '(Disabled)' : '($ per 1M tokens)'}`}>
                               {models.filter(m => !m.is_free).map(m => (
                                 <option key={m.id} value={m.id} disabled={isPaidLocked}>
-                                    {m.name} ({formatPrice(m.pricing)})
+                                    {m.name} ({formatContext(m.context_length)} | {formatPrice(m.pricing)})
                                 </option>
                               ))}
                           </optgroup>
