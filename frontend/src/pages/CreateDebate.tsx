@@ -220,7 +220,37 @@ const CreateDebate = () => {
 
   const [models, setModels] = useState<Model[]>([]);
   const [credits, setCredits] = useState<number | null>(null);
+  const [customApiKey, setCustomApiKey] = useState('');
+  const [customKeyCredits, setCustomKeyCredits] = useState<number | null>(null);
+  const [checkingKey, setCheckingKey] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Check custom key credits
+  useEffect(() => {
+    const checkKey = async () => {
+        if (!customApiKey || customApiKey.length < 10) {
+            setCustomKeyCredits(null);
+            return;
+        }
+        setCheckingKey(true);
+        try {
+            const res = await api.get(`/models/credits?api_key=${customApiKey}`);
+            setCustomKeyCredits(res.data.credits);
+        } catch (e) {
+            console.error("Failed to check custom key credits", e);
+            setCustomKeyCredits(0);
+        } finally {
+            setCheckingKey(false);
+        }
+    };
+
+    const timer = setTimeout(checkKey, 800);
+    return () => clearTimeout(timer);
+  }, [customApiKey]);
+
+  const isPaidLocked = customApiKey 
+      ? (customKeyCredits !== null && customKeyCredits <= 0) 
+      : (credits !== null && credits <= 0);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -418,6 +448,11 @@ const CreateDebate = () => {
     e.preventDefault();
     setValidating(true);
 
+    // Determine if paid models are allowed
+    const isPaidLocked = customApiKey 
+        ? (customKeyCredits !== null && customKeyCredits <= 0) 
+        : (credits !== null && credits <= 0);
+
     try {
       // Determine effective models
       const defaultModModel = settings.moderator_model || (models.length > 0 ? models[0].id : '');
@@ -426,9 +461,24 @@ const CreateDebate = () => {
           ...participants.map(p => p.model)
       ].filter((v, i, a) => v && a.indexOf(v) === i); // Unique non-empty values
 
+      // Check if we are using paid models while locked
+      const usedPaidModels = modelIdsToValidate.some(mid => {
+          const m = models.find(mod => mod.id === mid);
+          return m && !m.is_free;
+      });
+
+      if (usedPaidModels && isPaidLocked) {
+          alert("You have selected paid models but have insufficient credits (System or Custom Key). Please switch to free models or add a valid key.");
+          setValidating(false);
+          return;
+      }
+
       // Validate Models
       if (modelIdsToValidate.length > 0) {
-          const valRes = await api.post('/models/validate', { model_ids: modelIdsToValidate });
+          const valRes = await api.post('/models/validate', { 
+            model_ids: modelIdsToValidate,
+            api_key: customApiKey || undefined
+          });
           const failures = valRes.data.results.filter((r: any) => r.status !== 'ok');
           
           if (failures.length > 0) {
@@ -462,6 +512,7 @@ const CreateDebate = () => {
         num_rounds: settings.num_rounds,
         length_preset: settings.length_preset,
         debate_preset_id: "custom",
+        user_provider_key: customApiKey || undefined,
         participants: [
             // Moderator
             {
@@ -631,17 +682,22 @@ const CreateDebate = () => {
                                 <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </optgroup>
-                          <optgroup label={`Paid Models ${credits !== null && credits <= 0 ? '(Disabled due to low credits)' : '($ per 1M tokens)'}`}>
+                          <optgroup label={`Paid Models ${isPaidLocked ? '(Disabled due to low credits)' : '($ per 1M tokens)'}`}>
                               {models.filter(m => !m.is_free).map(m => (
-                                <option key={m.id} value={m.id} disabled={credits !== null && credits <= 0}>
+                                <option key={m.id} value={m.id} disabled={isPaidLocked}>
                                     {m.name} ({formatPrice(m.pricing)})
                                 </option>
                               ))}
                           </optgroup>
                         </select>
                         {/* Legend/Helper text */}
-                        {credits !== null && credits <= 0 && (
-                            <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits ($0.00).</div>
+                        {credits !== null && credits <= 0 && !customApiKey && (
+                            <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits ($0.00). Use your own key below to unlock.</div>
+                        )}
+                        {customApiKey && (
+                            <div className={`text-[10px] mt-1 font-medium ${isPaidLocked ? 'text-red-500' : 'text-blue-600'}`}>
+                                {checkingKey ? 'Checking key...' : isPaidLocked ? 'Custom Key has insufficient credits.' : 'Custom API Key active. Paid models unlocked.'}
+                            </div>
                         )}
                         {credits !== null && credits > 0 && (
                              <div className="text-[10px] text-green-600 mt-1 flex items-center">
@@ -699,6 +755,31 @@ const CreateDebate = () => {
                  </button>
             </div>
 
+            <div className="pt-4 border-t border-gray-100 mt-4">
+                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                     OpenRouter API Key (Optional)
+                 </label>
+                 
+                 {/* Helper Text with Balance Check */}
+                 <div className={`text-xs mb-2 transition-colors ${
+                    checkingKey ? 'text-gray-500' :
+                    (customApiKey && customKeyCredits !== null) ? (customKeyCredits > 0 ? 'text-blue-600' : 'text-red-500') : 'text-gray-500'
+                 }`}>
+                    {checkingKey ? 'Checking key balance...' : 
+                     (customApiKey && customKeyCredits !== null) ? 
+                        (customKeyCredits > 0 ? `Custom Key Accepted. Credits: $${customKeyCredits.toFixed(2)}` : `Key has no credits ($0.00). Paid models locked.`) :
+                        'Enter your own key to bypass system credit limits and access paid models.'}
+                 </div>
+
+                 <input
+                    type="password"
+                    className="w-full h-10 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    placeholder="sk-or-..."
+                    value={customApiKey}
+                    onChange={e => setCustomApiKey(e.target.value)}
+                 />
+            </div>
+
           </div>
         </div>
 
@@ -748,9 +829,9 @@ const CreateDebate = () => {
                                 <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </optgroup>
-                          <optgroup label={`Paid Models ${credits !== null && credits <= 0 ? '(Disabled)' : '($ per 1M tokens)'}`}>
+                          <optgroup label={`Paid Models ${isPaidLocked ? '(Disabled)' : '($ per 1M tokens)'}`}>
                               {models.filter(m => !m.is_free).map(m => (
-                                <option key={m.id} value={m.id} disabled={credits !== null && credits <= 0}>
+                                <option key={m.id} value={m.id} disabled={isPaidLocked}>
                                     {m.name} ({formatPrice(m.pricing)})
                                 </option>
                               ))}

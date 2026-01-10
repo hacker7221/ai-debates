@@ -27,6 +27,7 @@ class ModelsResponse(BaseModel):
 
 class ValidateModelsRequest(BaseModel):
     model_ids: List[str]
+    api_key: Optional[str] = None
 
 class ValidationResult(BaseModel):
     model_id: str

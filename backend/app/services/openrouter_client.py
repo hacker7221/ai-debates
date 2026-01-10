@@ -155,12 +155,13 @@ class OpenRouterClient:
             return False
 
 
-    async def get_credits(self) -> float:
+    async def get_credits(self, api_key: str = None) -> float:
         """
         Get current account credits.
         """
+        key = api_key or settings.OPENROUTER_API_KEY
         headers = {
-            "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+            "Authorization": f"Bearer {key}",
         }
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:

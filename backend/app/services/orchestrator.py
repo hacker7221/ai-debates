@@ -162,9 +162,10 @@ def process_turn_job(debate_id: str, seq_index: int):
             try:
                 # Use model from speaker config, fallback to free model
                 model_id = speaker.get('model_id') or "google/gemini-2.0-flash-exp:free"
-                # Check for BYOK API Key usually passed in debate config or settings
-                # For now using global settings
-                async for chunk in client.create_chat_completion(model_id, messages):
+                # Check for BYOK API Key potentially in debate config
+                user_api_key = conf.get('user_provider_key') 
+                
+                async for chunk in client.create_chat_completion(model_id, messages, api_key=user_api_key):
                     text_accumulator += chunk
                     # Publish delta
                     publish_event(debate_id, "turn_delta", {
@@ -282,7 +283,8 @@ def conduct_verdict_job(debate_id: str, seq_index: int):
             text_accumulator = ""
             try:
                 model_id = moderator.get('model_id') or "google/gemini-2.0-flash-exp:free"
-                async for chunk in client.create_chat_completion(model_id, messages):
+                user_api_key = conf.get('user_provider_key')
+                async for chunk in client.create_chat_completion(model_id, messages, api_key=user_api_key):
                     text_accumulator += chunk
                     publish_event(debate_id, "turn_delta", {
                         "seq_index": seq_index,

@@ -7,11 +7,11 @@ import asyncio
 router = APIRouter()
 
 @router.get("/credits")
-async def get_credits():
+async def get_credits(api_key: str = None):
     """
     Get current account credits.
     """
-    credits = await openrouter_client.get_credits()
+    credits = await openrouter_client.get_credits(api_key=api_key)
     return {"credits": credits}
 
 @router.get("", response_model=ModelsResponse)
@@ -33,7 +33,7 @@ async def validate_models(request: ValidateModelsRequest):
     results = []
     
     async def check_one(model_id):
-        is_ok = await openrouter_client.validate_model(model_id)
+        is_ok = await openrouter_client.validate_model(model_id, api_key=request.api_key)
         return ValidationResult(
             model_id=model_id,
             status="ok" if is_ok else "error"
