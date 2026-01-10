@@ -8,6 +8,7 @@ interface Model {
   name: string;
   pricing: { prompt: string; completion: string; image: string; request: string };
   context_length: number;
+  is_free: boolean;
 }
 
 interface Voice {
@@ -264,10 +265,21 @@ const CreateDebate = () => {
       try {
         const res = await api.get('/models/');
         // Backend returns { data: [...], timestamp: ... }
-        const modelsList = res.data.data || [];
+        let modelsList: Model[] = res.data.data || [];
+        
+        // Sort: Free models first, then by name
+        modelsList.sort((a, b) => {
+            if (a.is_free && !b.is_free) return -1;
+            if (!a.is_free && b.is_free) return 1;
+            return a.name.localeCompare(b.name);
+        });
+
         setModels(modelsList);
+        
         if (modelsList.length > 0) {
-            const defaultModel = modelsList.find((m: any) => m.name.toLowerCase().includes('(free)')) || modelsList[0];
+            // Pick the first free model as default, or just the first available
+            const defaultModel = modelsList.find(m => m.is_free) || modelsList[0];
+            
             setSettings(prev => ({ ...prev, moderator_model: defaultModel.id }));
             
             setParticipants(prev => prev.map(p => ({
@@ -595,15 +607,26 @@ const CreateDebate = () => {
             <div className="pt-2 border-t border-gray-100 mt-2 grid md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Model</label>
-                    <select
-                      className="w-full h-10 p-2 border border-gray-300 rounded"
-                      value={settings.moderator_model}
-                      onChange={e => setSettings({...settings, moderator_model: e.target.value})}
-                    >
-                      {models.map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                        <select
+                          className="w-full h-10 p-2 border border-gray-300 rounded"
+                          value={settings.moderator_model}
+                          onChange={e => setSettings({...settings, moderator_model: e.target.value})}
+                        >
+                          <optgroup label="Free Models">
+                              {models.filter(m => m.is_free).map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                              ))}
+                          </optgroup>
+                          <optgroup label="Paid Models (Disabled - No Credits)">
+                              {models.filter(m => !m.is_free).map(m => (
+                                <option key={m.id} value={m.id} disabled>{m.name} ($)</option>
+                              ))}
+                          </optgroup>
+                        </select>
+                        {/* Legend/Helper text */}
+                        <div className="text-[10px] text-gray-500 mt-1">Paid models are disabled because the system account has no credits.</div>
+                    </div>
                 </div>
                 <div>
                      <label className="block text-sm font-medium text-gray-700 mb-1">Moderator Voice</label>
@@ -697,9 +720,16 @@ const CreateDebate = () => {
                           value={p.model}
                           onChange={e => updateParticipant(idx, 'model', e.target.value)}
                         >
-                          {models.map(m => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                          ))}
+                          <optgroup label="Free Models">
+                              {models.filter(m => m.is_free).map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                              ))}
+                          </optgroup>
+                          <optgroup label="Paid Models (Disabled)">
+                              {models.filter(m => !m.is_free).map(m => (
+                                <option key={m.id} value={m.id} disabled>{m.name} ($)</option>
+                              ))}
+                          </optgroup>
                         </select>
                       </div>
                       <div>
