@@ -1,11 +1,11 @@
-from typing import List
+from typing import List, Dict, Any
 from fastapi import APIRouter
 from app.schemas.schemas import Preset
 
 router = APIRouter()
 
 # Simple static presets for MVP
-PRESETS_DB = [
+PRESETS_DB: List[Dict[str, Any]] = [
     {
         "id": "classic_v1",
         "name": "Classic Debate (6 Rounds)",
@@ -36,7 +36,7 @@ PRESETS_DB = [
 ]
 
 @router.get("", response_model=List[Preset])
-def get_presets():
+def get_presets() -> List[Dict[str, Any]]:
     """
     Get list of available debate presets.
     """

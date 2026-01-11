@@ -2,18 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import List, Dict, Any
 import uuid
 
 from app.core.db import get_db
-from app.models.models import Debate, DebateParticipant, Turn
+from app.models.models import Debate, DebateParticipant
 from app.schemas.schemas import DebateConfig, DebateResponse
 from app.services.queue_manager import enqueue_debate_start
 
 router = APIRouter()
 
-@router.get("/", response_model=List[dict])
-async def list_debates(db: AsyncSession = Depends(get_db)):
+@router.get("/", response_model=List[Dict[str, Any]])
+async def list_debates(db: AsyncSession = Depends(get_db)) -> List[Dict[str, Any]]:
     """List all debates ordered by creation time."""
     stmt = select(Debate).order_by(Debate.created_at.desc())
     result = await db.execute(stmt)
@@ -108,8 +108,8 @@ async def delete_debate(debate_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     return None
 
-@router.get("/{debate_id}")
-async def get_debate(debate_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{debate_id}", response_model=Dict[str, Any])
+async def get_debate(debate_id: str, db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Get debate details and status, including turns and participants.
     """

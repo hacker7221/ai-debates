@@ -6,10 +6,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
     
     # Redis
-    REDIS_URL: str
+    REDIS_URL: str = ""
     
     # External APIs
     OPENROUTER_API_KEY: Optional[str] = None

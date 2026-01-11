@@ -1,10 +1,8 @@
-import time
-import json
 import uuid
 import asyncio
-from typing import Optional
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import sessionmaker, Session
+from datetime import datetime, timezone
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from rq import Queue
 import redis
 
@@ -37,7 +35,7 @@ def start_debate_job(debate_id: str):
             return
 
         debate.status = "running"
-        debate.started_at = datetime.utcnow()
+        debate.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.commit()
 
         # Notify
@@ -165,7 +163,7 @@ def process_turn_job(debate_id: str, seq_index: int):
                 # Check for BYOK API Key potentially in debate config
                 user_api_key = conf.get('user_provider_key') 
                 
-                async for chunk in client.create_chat_completion(model_id, messages, api_key=user_api_key):
+                async for chunk in client.create_chat_completion(model_id, messages, api_key=str(user_api_key) if user_api_key else None):
                     text_accumulator += chunk
                     # Publish delta
                     publish_event(debate_id, "turn_delta", {
@@ -284,7 +282,7 @@ def conduct_verdict_job(debate_id: str, seq_index: int):
             try:
                 model_id = moderator.get('model_id') or "google/gemini-2.0-flash-exp:free"
                 user_api_key = conf.get('user_provider_key')
-                async for chunk in client.create_chat_completion(model_id, messages, api_key=user_api_key):
+                async for chunk in client.create_chat_completion(model_id, messages, api_key=str(user_api_key) if user_api_key else None):
                     text_accumulator += chunk
                     publish_event(debate_id, "turn_delta", {
                         "seq_index": seq_index,
@@ -338,7 +336,7 @@ def finish_debate_job(debate_id: str):
         debate = db.query(Debate).filter(Debate.id == uuid.UUID(debate_id)).first()
         if debate:
             debate.status = "completed"
-            debate.ended_at = datetime.utcnow()
+            debate.ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.commit()
             
             publish_event(debate_id, "debate_completed", {

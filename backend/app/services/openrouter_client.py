@@ -12,7 +12,7 @@ class OpenRouterClient:
         self._cache_time = 0
         self._cache_ttl = 3600  # 1 hour
     
-    async def create_chat_completion(self, model: str, messages: List[Dict], api_key: str = None) -> AsyncGenerator[str, None]:
+    async def create_chat_completion(self, model: str, messages: List[Dict[str, Any]], api_key: Optional[str] = None) -> AsyncGenerator[str, None]:
         """
         Stream chat completion from OpenRouter.
         Yields content text chunks.
@@ -31,32 +31,32 @@ class OpenRouterClient:
         
         attempts = ["standard"]
         # Check if we have a system prompt to potentially merge
-        if any(m['role'] == 'system' for m in messages):
+        if any(m.get('role') == 'system' for m in messages):
             attempts.append("merged_system")
             
-        last_error = None
+        # last_error = None
         
         for attempt in attempts:
-            current_messages = messages
+            current_messages: List[Dict[str, Any]] = messages
             if attempt == "merged_system":
                 # Merge logic: Prepend system content to first user message
-                system_content = "\n".join([m['content'] for m in messages if m['role'] == 'system'])
-                non_system = [m for m in messages if m['role'] != 'system']
+                system_content = "\n".join([str(m.get('content', '')) for m in messages if m.get('role') == 'system'])
+                non_system: List[Dict[str, Any]] = [m for m in messages if m.get('role') != 'system']
                 if not non_system:
                     # Weird case: only system?
                     current_messages = [{"role": "user", "content": system_content}]
                 else:
                     # Find first user message
-                    first_user_idx = next((i for i, m in enumerate(non_system) if m['role'] == 'user'), -1)
+                    first_user_idx = next((i for i, m in enumerate(non_system) if m.get('role') == 'user'), -1)
                     if first_user_idx >= 0:
                         non_system[first_user_idx] = non_system[first_user_idx].copy()
-                        non_system[first_user_idx]['content'] = f"{system_content}\n\n{non_system[first_user_idx]['content']}"
+                        non_system[first_user_idx]['content'] = f"{system_content}\n\n{non_system[first_user_idx].get('content')}"
                         current_messages = non_system
                     else:
                         # No user message? Prepend one.
                         current_messages = [{"role": "user", "content": system_content}] + non_system
 
-            payload = {
+            payload: Dict[str, Any] = {
                 "model": model,
                 "messages": current_messages,
                 "stream": True 
@@ -72,7 +72,7 @@ class OpenRouterClient:
                             # If it's a 400 error and we haven't tried merging yet, loop continue
                             if response.status_code == 400 and attempt == "standard" and "merged_system" in attempts:
                                 print(f"OpenRouter 400 Error for {model}, retrying with merged system prompt...")
-                                last_error = Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8', errors='replace')}")
+                                # last_error = Exception(...) # suppressed
                                 continue
                             
                             raise Exception(f"OpenRouter Error {response.status_code}: {err_text.decode('utf-8', errors='replace')}")
@@ -97,13 +97,13 @@ class OpenRouterClient:
                 return 
             except Exception as e:
                 print(f"[OpenRouter] Attempt '{attempt}' failed for model {model}: {e}")
-                last_error = e
+                # last_error = e # suppressed
                 # Only suppress and retry if we have retries left and it was potentially a format issue
                 if attempt == "standard" and "merged_system" in attempts:
                     continue
                 raise e # Re-raise if final attempt
 
-    async def validate_model(self, model: str, api_key: str = None) -> Tuple[bool, Optional[str]]:
+    async def validate_model(self, model: str, api_key: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """
         Quickly validate if a model is responding by asking it to say 'pong'.
         Returns (True, None) if successful, (False, error_message) otherwise.
@@ -117,7 +117,7 @@ class OpenRouterClient:
         }
         
         # Use stream=True to match production behavior
-        payload = {
+        payload: Dict[str, Any] = {
             "model": model,
             "messages": [{"role": "user", "content": "say pong"}],
             "max_tokens": 5,
@@ -144,7 +144,7 @@ class OpenRouterClient:
                                     err_str = error_obj["message"]
                         except:
                             pass
-                            
+                        
                         # print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_str}")
                         print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_str}")
                         return False, err_str
@@ -180,7 +180,7 @@ class OpenRouterClient:
             return False, str(e)
 
 
-    async def get_credits(self, api_key: str = None) -> float:
+    async def get_credits(self, api_key: Optional[str] = None) -> float:
         """
         Get current account credits.
         """
@@ -213,7 +213,7 @@ class OpenRouterClient:
         async with httpx.AsyncClient() as client:
             try:
                 # No auth needed for listing models typically, but good practice if they require it later
-                headers = {}
+                headers: Dict[str, str] = {}
                 if settings.OPENROUTER_API_KEY:
                     headers["Authorization"] = f"Bearer {settings.OPENROUTER_API_KEY}"
                 
@@ -222,7 +222,7 @@ class OpenRouterClient:
                 data = response.json().get("data", [])
                 
                 # Transform and filter
-                processed_models = []
+                processed_models: List[Dict[str, Any]] = []
                 for model in data:
                     pricing = model.get("pricing", {})
                     prompt_price = float(pricing.get("prompt", "0"))
@@ -231,12 +231,12 @@ class OpenRouterClient:
                     is_free = (prompt_price == 0.0 and completion_price == 0.0)
                     
                     processed_models.append({
-                        "id": model.get("id"),
-                        "name": model.get("name"),
-                        "context_length": model.get("context_length", 0),
+                        "id": str(model.get("id")),
+                        "name": str(model.get("name")),
+                        "context_length": int(model.get("context_length", 0)),
                         "pricing": {
-                            "prompt": pricing.get("prompt", "0"),
-                            "completion": pricing.get("completion", "0")
+                            "prompt": str(pricing.get("prompt", "0")),
+                            "completion": str(pricing.get("completion", "0"))
                         },
                         "is_free": is_free
                     })

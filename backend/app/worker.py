@@ -1,13 +1,15 @@
 import os
 import redis
+from redis import Redis
 from rq import Worker, Queue
+from typing import Optional
 
 listen = ['default']
 
 redis_url = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 
 try:
-    conn = redis.from_url(redis_url)
+    conn: Optional[Redis] = redis.from_url(redis_url)
 except Exception as e:
     print(f"Error connecting to Redis: {e}")
     conn = None

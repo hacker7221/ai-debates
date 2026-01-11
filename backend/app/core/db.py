@@ -4,6 +4,9 @@ from app.models.base import Base
 # Import all models so that Base has them registered
 from app.models import models
 
+# Avoid unused import error (models is used for side-effects)
+_ = models
+
 # Create async engine
 engine = create_async_engine(
     settings.DATABASE_URL,

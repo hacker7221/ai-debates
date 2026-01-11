@@ -1,11 +1,14 @@
 import json
 import redis
+from typing import Dict, Any
 from app.core.config import settings
 
-# Dedicated PubSub connection
-redis_pub = redis.from_url(settings.REDIS_URL)
+from redis import Redis
 
-def publish_event(debate_id: str, event_type: str, payload: dict):
+# Dedicated PubSub connection
+redis_pub: Redis = redis.from_url(settings.REDIS_URL)
+
+def publish_event(debate_id: str, event_type: str, payload: Dict[str, Any]):
     """
     Publish a structured event to the debate channel.
     Channel: debate:{debate_id}

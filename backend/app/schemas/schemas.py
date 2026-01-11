@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict
 
 # --- Preset Schemas ---
@@ -6,7 +6,7 @@ class Preset(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    preset_json: dict
+    preset_json: Dict[str, Any]
     model_config = ConfigDict(from_attributes=True)
 
 # --- Model Schemas ---

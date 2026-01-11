@@ -1,5 +1,5 @@
-import asyncio
 import json
+from typing import AsyncGenerator, Dict, Any
 from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 from redis import asyncio as aioredis
@@ -8,12 +8,12 @@ from app.core.config import settings
 router = APIRouter()
 
 @router.get("/{debate_id}/stream")
-async def stream_debate(debate_id: str, request: Request):
+async def stream_debate(debate_id: str, request: Request) -> EventSourceResponse:
     """
     SSE Endpoint for streaming debate events.
     Subscribes to Redis channel 'debate:{debate_id}'
     """
-    async def event_generator():
+    async def event_generator() -> AsyncGenerator[Dict[str, Any], None]:
         redis = await aioredis.from_url(settings.REDIS_URL, decode_responses=True)
         pubsub = redis.pubsub()
         channel = f"debate:{debate_id}"
@@ -30,13 +30,13 @@ async def stream_debate(debate_id: str, request: Request):
                 if await request.is_disconnected():
                     break
                     
-                if message["type"] == "message":
+                if isinstance(message, dict) and message.get("type") == "message":
                     # Parse Redis message (which is JSON stringified in orchestrator)
-                    payload_str = message["data"]
+                    payload_str: str = str(message.get("data"))
                     try:
-                        payload = json.loads(payload_str)
+                        payload: Dict[str, Any] = json.loads(payload_str)
                         # We expect payload to have 'event' and 'data' keys
-                        event_type = payload.get("event", "update")
+                        event_type = str(payload.get("event", "update"))
                         event_data = payload.get("data", {})
                         
                         yield {
