@@ -2,8 +2,8 @@ import asyncio
 import os
 import sys
 
-# Add backend to path
-sys.path.append(os.path.join(os.getcwd(), 'backend'))
+# Add parent directory (backend) to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.services.openrouter_client import openrouter_client
 from app.core.config import settings

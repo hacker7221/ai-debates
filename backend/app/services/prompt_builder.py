@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 
 class PromptBuilder:
     @staticmethod
@@ -26,7 +26,7 @@ class PromptBuilder:
     def build_user_prompt(
         topic: str,
         current_round: str,
-        last_turns: List[Dict],
+        last_turns: List[Dict[str, Any]],
         word_limit: int
     ) -> str:
         prompt = f"Topic: {topic}\n"
