@@ -493,12 +493,18 @@ const CreateDebate = () => {
           const failures = valRes.data.results.filter((r: any) => r.status !== 'ok');
           
           if (failures.length > 0) {
-              const failedIds = failures.map((f: any) => {
-                  const m = models.find(md => md.id === f.model_id);
-                  return m ? m.name : f.model_id;
-              }).join(', ');
+              let msg = "The following models are unresponsive:\n\n";
               
-              alert(`The following models are unresponsive: ${failedIds}. Please select different models.`);
+              failures.forEach((f: any) => {
+                  const m = models.find(md => md.id === f.model_id);
+                  const name = m ? m.name : f.model_id;
+                  const errorDetail = f.error || "Unknown connection error";
+                  msg += `${name}\n${errorDetail}\n\n`;
+              });
+              
+              msg += "Please select different models.";
+              
+              alert(msg);
               setValidating(false);
               return;
           }

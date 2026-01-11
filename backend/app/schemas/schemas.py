@@ -32,6 +32,7 @@ class ValidateModelsRequest(BaseModel):
 class ValidationResult(BaseModel):
     model_id: str
     status: str  # "ok" | "error"
+    error: Optional[str] = None
 
 class ValidateModelsResponse(BaseModel):
     results: List[ValidationResult]

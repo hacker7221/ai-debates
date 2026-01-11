@@ -33,8 +33,8 @@ async def test():
     # Test 1: Validation style (User role, Short, Stream=True, MaxTokens=5)
     print("\n--- Test 1: Validation Style ---")
     try:
-        success = await openrouter_client.validate_model(target_model)
-        print(f"Validation Result: {success}")
+        success, error = await openrouter_client.validate_model(target_model)
+        print(f"Validation Result: {success} Error: {error}")
     except Exception as e:
         print(f"Validation Exception: {e}")
 

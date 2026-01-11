@@ -1,7 +1,7 @@
 import time
 import httpx
 import json
-from typing import List, Dict, Any, AsyncGenerator
+from typing import List, Dict, Any, AsyncGenerator, Tuple, Optional
 from app.core.config import settings
 
 class OpenRouterClient:
@@ -103,10 +103,10 @@ class OpenRouterClient:
                     continue
                 raise e # Re-raise if final attempt
 
-    async def validate_model(self, model: str, api_key: str = None) -> bool:
+    async def validate_model(self, model: str, api_key: str = None) -> Tuple[bool, Optional[str]]:
         """
         Quickly validate if a model is responding by asking it to say 'pong'.
-        Returns True if successful, False otherwise.
+        Returns (True, None) if successful, (False, error_message) otherwise.
         """
         key = api_key or settings.OPENROUTER_API_KEY
         headers = {
@@ -130,8 +130,24 @@ class OpenRouterClient:
                     if response.status_code != 200:
                         # Ensure we consume the error to avoid hanging
                         err_text = await response.aread()
-                        print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_text.decode('utf-8', errors='replace')}")
-                        return False
+                        err_str = err_text.decode('utf-8', errors='replace')
+                        
+                        # Try to parse nice message
+                        try:
+                            err_json = json.loads(err_str)
+                            if "error" in err_json:
+                                error_obj = err_json["error"]
+                                # Check metadata.raw first for more detail if message is generic or just to be safe
+                                if "metadata" in error_obj and "raw" in error_obj["metadata"]:
+                                    err_str = error_obj["metadata"]["raw"]
+                                elif "message" in error_obj:
+                                    err_str = error_obj["message"]
+                        except:
+                            pass
+                            
+                        # print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_str}")
+                        print(f"[OpenRouter] Validation Error {response.status_code} for {model}: {err_str}")
+                        return False, err_str
 
                     # Check if we can get at least one chunk of data
                     async for line in response.aiter_lines():
@@ -147,20 +163,21 @@ class OpenRouterClient:
                                 chunk = json.loads(data_str)
                                 # Just need one valid chunk to confirm auth and connection
                                 if "choices" in chunk:
-                                    return True
+                                    return True, None
                                 # Some error chunks might look different
                                 if "error" in chunk:
-                                    return False
+                                    msg = chunk.get('error', {}).get('message', "Unknown SSE Error")
+                                    return False, msg
                             except:
                                 continue
                 
                     # The loop might finish without returning True if only keep-alives or empty?
                     # But usually we hit [DONE] or a chunk.
-                    return True
+                    return True, None
 
         except Exception as e:
-            print(f"Validation error for {model}: {e}")
-            return False
+            # print(f"Validation error for {model}: {e}")
+            return False, str(e)
 
 
     async def get_credits(self, api_key: str = None) -> float:

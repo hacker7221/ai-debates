@@ -33,10 +33,11 @@ async def validate_models(request: ValidateModelsRequest):
     results = []
     
     async def check_one(model_id):
-        is_ok = await openrouter_client.validate_model(model_id, api_key=request.api_key)
+        is_ok, error_msg = await openrouter_client.validate_model(model_id, api_key=request.api_key)
         return ValidationResult(
             model_id=model_id,
-            status="ok" if is_ok else "error"
+            status="ok" if is_ok else "error",
+            error=error_msg
         )
 
     tasks = [check_one(mid) for mid in request.model_ids]
