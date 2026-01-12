@@ -126,8 +126,9 @@ class OpenRouterClient:
         payload: Dict[str, Any] = {
             "model": model,
             "messages": [{"role": "user", "content": "say pong"}],
-            "max_tokens": 5,
-            "stream": True
+            "max_tokens": 20, 
+            "stream": True,
+            "provider": {"ignore": ["Hyperbolic"]} # Optional: Avoid providers that might have strict limits if needed
         }
 
         try:
