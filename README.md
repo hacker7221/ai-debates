@@ -13,7 +13,7 @@ Watch the conversation unfold in real-time as a Moderator AI guides the discussi
 
 > **🚀 Live Demo Version is Coming Soon!**
 
-![App Demo](https://github.com/user-attachments/assets/PLACEHOLDER_GIF_URL)
+[![App Demo](https://s12.gifyu.com/images/bhtKK.gif)](https://gifyu.com/image/bhtKK)
 
 ---
 
@@ -92,7 +92,7 @@ Follow these steps to get a local copy up and running.
 4. Configure your **Participants**:
    - **Debater 1**: "Optimist Prime" (Model: GPT-4o)
    - **Debater 2**: "Skeptical Sam" (Model: Claude 3.5 Sonnet)
-   - **Moderator**: "Judge Judy" (Model: Gemini Pro)
+   - **Moderator**: (Model: Gemini Pro)
 5. Set the **Intensity** and **Rounds**.
 6. Hit **Start Debate** and watch the magic happen!
 
@@ -112,18 +112,8 @@ The system uses an event-driven architecture to handle long-running LLM generati
 5. **Frontend**: Subscribes to the debate channel via SSE (Server-Sent Events) and updates the UI in real-time.
 
 ---
-## 📸 Screenshots
-
-![Create Debate](https://github.com/user-attachments/assets/PLACEHOLDER_CREATE_IMG)
-*Create unique scenarios and characters*
-
-![Live Debate](https://github.com/user-attachments/assets/PLACEHOLDER_LIVE_IMG)
-*Watch the debate unfold in real-time*
-
----
 
 ## 🗺️ Roadmap
-## �🛣️ Roadmap
 
 - [ ] **Voice Synthesis (TTS)**: Hear the debaters speak!
 - [ ] **User Voting**: Let the audience decide the winner.
